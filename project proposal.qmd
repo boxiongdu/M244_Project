@@ -1,0 +1,12 @@
+---
+title: "Project Proposal"
+author: Yifei Qu, Boxiong Du
+format: html
+editor: visual
+---
+
+## Dataset 1
+
+The first dataset we selected is the Steam games dataset. It was created 6 months ago by scraping data through the Steam webAPI. The data has 39 variables, which can be split into two genres: game information and game play. Game information contains variables such as game name, developer, game price, review, and game genre etc,. Game play contains variables such as peak concurrent users(CCU) and median playtime of players(both overall and in the past two weeks).
+
+We find the Steam dataset especially compelling because it brings together both engagement metrics—like CCU and median play time—and commercial factors such as price, along with user-generated content in the form of reviews. We are very interested in the game industry and would really like to use data to provide insights to the performance of games. Our goal is to build a machine learning model to predict peak concurrent users. Generally we would predict lower price game with high positive reviews and long median playtime to have higher CCU.
