@@ -4,8 +4,7 @@ format: html
 editor: visual
 ---
 
-
-```{python}
+```{python loading file and changing format}
 #| label: data-loading
 #| warning: false
 #| message: false
@@ -18,6 +17,7 @@ first_file = '/Users/feifei/Desktop/M244_Project/data/games.json'
 with open(first_file, 'r') as file:
     json_data = json.load(file)
 
+#selecting unnecessary variables to drop
 unnecessary_vars = [
     'packages', 'screenshots', 'movies', 'header_image', 'website', 
     'support_url', 'notes', 'support_email', 'required_age', 'metacritic_url',
@@ -25,6 +25,7 @@ unnecessary_vars = [
     'full_audio_languages', 'dlc_count', 'supported_languages', 'developers'
 ]
 
+#transforming json data to csv data
 games = []
 for app_id, game_info in json_data.items():
     filtered_info = {k: v for k, v in game_info.items() if k not in unnecessary_vars}
@@ -38,15 +39,16 @@ for app_id, game_info in json_data.items():
 
 df = pd.DataFrame(games)
 
-df.to_csv('games.csv', index=False)
+df.to_csv('games.csv', index=False) #saving the transfomred data
 ```
 
-```{python}
+```{python data wrangling}
 #| label: data-wrangling
 #| warning: false
 
 df = df[df['median_playtime_forever'] > 0]
 
+#further select necessary columns
 keep_cols = [
     'name', 'release_date', 'price', 'windows', 'mac', 'linux',
     'publishers', 'genres', 'positive', 'negative', 'estimated_owners',
@@ -54,27 +56,40 @@ keep_cols = [
 ]
 df = df[keep_cols]
 
-
+#keep only the 'year' of release data
 df['release_year'] = pd.to_datetime(df['release_date'], format='mixed').dt.year
 
-
+#Turn True/False to 1/0 and then take the sum
 system_cols = ['windows', 'mac', 'linux']
 for col in system_cols:
     df[col] = df[col].astype(int)
 df['compatible_systems'] = df[system_cols].sum(axis=1)
 
+#Get positive review rates
 df['positive_rate'] = df['positive'] / (df['positive'] + df['negative'])
 
+#Turn estimated owners to a categorical variable
 df['estimated_owners'] = pd.Categorical(df['estimated_owners'])
 
+#Get only the main genre
 df['genres'] = df['genres'].apply(lambda x: x[:1] if len(x) > 1 else x)
 
 df = df.drop(columns=['release_date', 'windows', 'mac', 'linux', 'positive', 'negative'])
 
 print(df.head(3))
 
-df.to_csv('games.csv', index=False)
+#df.to_csv('games.csv', index=False)
 ```
+
+#### Data Wrangling and Transformation
+
+The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0.\
+Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables:\
+  1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.\
+  2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. \
+  3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. \
+  4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. \
+  5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables. \
 
 ```{r}
 library(ggplot2)
@@ -102,8 +117,6 @@ ggplot(games_filtered, aes(x = price, y = positive_rate)) +
   ) +
   theme_minimal()
 ```
-
-
 
 ```{r}
 price_trend <- games %>%
@@ -198,7 +211,3 @@ plot_ly(games_filtered,
     title = "3D Interaction: Price, Peak CCU, and Playtime"
   )
 ```
-
-
-
-
