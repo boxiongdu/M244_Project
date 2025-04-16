@@ -1,0 +1,54 @@
+---
+title: "Project Preliminary Analysis"
+format: html
+editor: visual
+---
+
+## 
+
+```{r,message=FALSE}
+#Load R packages here
+library(reticulate)
+library(tidyverse)
+```
+
+```{python import packages}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.compose import make_column_transformer
+from sklearn.model_selection import cross_validate
+from sklearn.model_selection import GroupKFold
+from sklearn.linear_model import LinearRegression, Ridge, RidgeCV
+from sklearn.linear_model import ElasticNet, ElasticNetCV
+```
+
+```{python}
+df.columns
+```
+
+```{python}
+df = pd.read_csv('games_cleaned.csv')
+```
+
+```{python}
+y = df['median_playtime_forever']
+
+X = df.drop(['name', 'median_playtime_forever', 'Unnamed: 0'], axis=1)
+
+numerical_columns = ['price', 'peak_ccu', 'positive_rate']
+
+categorical_columns = ['publishers', 'genres', 'estimated_owners', 'release_year', 'compatible_systems']
+
+preprocessor = make_column_transformer(
+   (OneHotEncoder(drop="first"), categorical_columns),
+   (StandardScaler(), numerical_columns),
+   remainder = 'passthrough',
+   verbose_feature_names_out=False, # avoid prepending preprocessor names
+)
+
+transformed_X = preprocessor.fit_transform(X)
+```
