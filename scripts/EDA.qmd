@@ -1,5 +1,7 @@
 ---
 title: "MATH244 project EDA"
+author: "Boxiong Du, Yifei Qu"
+date: "03/25/2025"
 format: html
 editor: visual
 ---
@@ -39,8 +41,12 @@ for app_id, game_info in json_data.items():
 
 df = pd.DataFrame(games)
 
-df.to_csv('games.csv', index=False) #saving the transfomred data
+df.to_csv('games.csv', index=False) #saving the transformed data
 ```
+
+#### Exploring Data
+
+Our outcome variable is Median Playtime Forever, which indicates the median time in minutes all players spend in the game.This variable effectively captures long-term player engagement by focusing on typical gameplay duration. However, it has some limitations that it excludes short-term gameplay and players who quit the game quickly. It's not surprising that the price and median playtime show a positive relationship and peak CCU and median playtime also show a positive relationship. We consider price, Peak CCU, and Positive Review Rate to be our key explanatory variables.
 
 ```{python data wrangling}
 #| label: data-wrangling
@@ -76,22 +82,20 @@ df['genres'] = df['genres'].apply(lambda x: x[:1] if len(x) > 1 else x)
 
 df = df.drop(columns=['release_date', 'windows', 'mac', 'linux', 'positive', 'negative'])
 
-print(df.head(3))
-
-#df.to_csv('games.csv', index=False)
+df.to_csv('games.csv', index=False)
 ```
 
 #### Data Wrangling and Transformation
 
 The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0.\
 Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables:\
-  1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.\
-  2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. \
-  3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. \
-  4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. \
-  5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables. \
+1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.\
+2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable.\
+3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game.\
+4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable.\
+5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.\
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(stats)
@@ -119,6 +123,12 @@ ggplot(games_filtered, aes(x = price, y = positive_rate)) +
 ```
 
 ```{r}
+ggplot(games, aes(x = price, y = estimated_owners)) + 
+  
+```
+
+
+```{r}
 price_trend <- games %>%
   group_by(release_year) %>%
   summarise(
@@ -139,19 +149,17 @@ ggplot(price_trend, aes(x = release_year, y = avg_price)) +
 ```
 
 ```{r}
-ggplot(games, aes(x = positive_rate, fill = compatible_systems)) +
-  geom_density(alpha = 0.6) +
+ggplot(games_filtered, aes(x = positive_rate, fill = factor(compatible_systems))) +
+  geom_density(alpha = 0.4) +
   labs(
     title = "Multi-Platform Support Correlates with Better Reviews",
     x = "Positive Review Rate",
-    y = "Density",
-    fill = "Compatible Systems"
+    y = "Density"
   ) +
-  scale_fill_brewer(palette = "Set2") +
   theme_minimal()
 ```
 
-```{r}
+```{r, warning=FALSE}
 games_filtered <- games %>%
   filter(price <= quantile(price, 0.95, na.rm = TRUE),
          median_playtime_forever <= quantile(median_playtime_forever, 0.95, na.rm = TRUE))
@@ -168,7 +176,7 @@ ggplot(games_filtered, aes(x = price, y = median_playtime_forever)) +
   theme_minimal()
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 games_filtered <- games %>%
   filter(
     peak_ccu > 0,  
@@ -190,7 +198,7 @@ ggplot(games_filtered, aes(x = peak_ccu, y = median_playtime_forever)) +
   theme_minimal()
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(plotly)
 
 plot_ly(games_filtered, 
