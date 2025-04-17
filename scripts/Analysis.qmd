@@ -5,17 +5,12 @@ editor: visual
 ---
 
 ## Introduction and Data
+
 In today's rapidly evolving digital landscape, video games have emerged as one of the most dynamic and influential forms of entertainment, reshaping how people engage with media and spend their leisure time. As the world's leading PC gaming platform, Steam has revolutionized game distribution and player interaction, offering unparalleled insights into gaming trends and consumer behavior. This project utilizes Steam's extensive game dataset to investigate the key factors that contribute to a game's success, particularly focusing on how pricing, player reviews, and popularity metrics influence engagement as measured by median playtime. By analyzing these relationships, we aim to provide data-driven insights that can help developers create more compelling gaming experiences while enabling players to make better-informed choices. Ultimately, understanding these dynamics will not only benefit individual stakeholders but also contribute to the continued growth and innovation of the gaming industry as a whole.
 
-Our research question is how is median gameplay time affected by other variables? We expect that  higher-priced games will correlate with longer playtime, reflecting deeper content or premium quality; games with higher positive review rates will sustain longer engagement, as player satisfaction likely enhances retention; peak CCU will show a nonlinear relationship, where moderate popularity maximizes playtime. 
+Our research question is how is median gameplay time affected by other variables? We expect that higher-priced games will correlate with longer playtime, reflecting deeper content or premium quality; games with higher positive review rates will sustain longer engagement, as player satisfaction likely enhances retention; peak CCU will show a nonlinear relationship, where moderate popularity maximizes playtime.
 
-This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left. The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' > 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables:
-1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.
-2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable.
-3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game.
-4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable.
-5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
-
+This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left. The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
 
 ```{r,message=FALSE}
 #Load R packages here
@@ -89,6 +84,19 @@ X_train, X_test, y_train, y_test = train_test_split(
 ```{python}
 pipeline_lasso.fit(X_train, y_train)
 pipeline_ols.fit(X_train, y_train)
+```
+
+```{python}
+# OLS model predictions
+y_pred_train_ols = pipeline_ols.predict(X_train)
+y_pred_test_ols = pipeline_ols.predict(X_test)
+```
+
+```{python}
+# train MSE OLS
+mean_squared_error(y_train, y_pred_train_ols)
+# test MSE OLS
+mean_squared_error(y_test, y_pred_test_ols)
 ```
 
 ```{python}
