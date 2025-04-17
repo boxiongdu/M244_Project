@@ -24,6 +24,8 @@ from sklearn.model_selection import cross_validate
 from sklearn.model_selection import GroupKFold
 from sklearn.linear_model import LinearRegression, Ridge, RidgeCV
 from sklearn.linear_model import ElasticNet, ElasticNetCV
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 ```
 
 ```{python}
@@ -31,7 +33,7 @@ df.columns
 ```
 
 ```{python}
-df = pd.read_csv('games_cleaned.csv')
+df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv')
 ```
 
 ```{python}
@@ -52,3 +54,43 @@ preprocessor = make_column_transformer(
 
 transformed_X = preprocessor.fit_transform(X)
 ```
+
+```{python}
+alphas_list = 10 ** np.linspace(-2, 3, 20)
+
+pipeline_lasso = Pipeline([
+    ('preprocess', preprocessor),
+    ('estimator', ElasticNetCV(alphas=alphas_list, l1_ratio=1, max_iter=10000))
+])
+
+pipeline_ols = Pipeline([
+    ('preprocess', preprocessor),
+    ('estimator', LinearRegression())
+])
+
+```
+
+```{python}
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=20250416)
+```
+
+```{python}
+pipeline_lasso.fit(X_train, y_train)
+pipeline_ols.fit(X_train, y_train)
+```
+
+```{python}
+# Lasso model predictions
+y_pred_train_lasso = pipeline_lasso.predict(X_train)
+y_pred_test_lasso = pipeline_lasso.predict(X_test)
+
+# train MSE lasso
+mean_squared_error(y_train, y_pred_train_lasso)
+# test MSE lasso
+mean_squared_error(y_test, y_pred_test_lasso)
+```
+
+
+
+
