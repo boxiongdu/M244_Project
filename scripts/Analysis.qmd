@@ -1,5 +1,7 @@
 ---
 title: "Project Preliminary Analysis"
+author: "Boxiong Du, Yifei Qu"
+date: "04/14/2025"
 format: html
 editor: visual
 ---
@@ -36,10 +38,11 @@ from sklearn.metrics import mean_squared_error
 ```
 
 ```{python}
-df = pd.read_csv('/Users/brodydu/Desktop/project/M244_Project/data/games_cleaned.csv') 
+df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
 
+## Methodology
 ```{python}
 df = df.dropna() #dropping NA positive rate
 
@@ -59,6 +62,14 @@ preprocessor = make_column_transformer(
 )
 
 transformed_X = preprocessor.fit_transform(X)
+```
+
+```{python}
+corr_matrix = df[numerical_columns + ['median_playtime_forever']].corr()
+plt.figure(figsize=(10, 6))
+sns.heatmap(corr_matrix, annot=True, cmap="coolwarm")
+plt.title("Correlation Between Numerical Vairables and Playtime")
+plt.show()
 ```
 
 ```{python}
@@ -87,6 +98,8 @@ pipeline_ols.fit(X_train, y_train)
 ```
 
 ```{python}
+#| warning: false
+#| message: false
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
@@ -100,6 +113,8 @@ mean_squared_error(y_test, y_pred_test_ols)
 ```
 
 ```{python}
+#| warning: false
+#| message: false
 # Lasso model predictions
 y_pred_train_lasso = pipeline_lasso.predict(X_train)
 y_pred_test_lasso = pipeline_lasso.predict(X_test)
