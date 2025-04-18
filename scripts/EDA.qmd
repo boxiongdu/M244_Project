@@ -48,6 +48,11 @@ df.to_csv('games.csv', index=False) #saving the transformed data
 
 Our outcome variable is Median Playtime Forever, which indicates the median time in minutes all players spend in the game.This variable effectively captures long-term player engagement by focusing on typical gameplay duration. However, it has some limitations that it excludes short-term gameplay and players who quit the game quickly. It's not surprising that the price and median playtime show a positive relationship and peak CCU and median playtime also show a positive relationship. We consider price, Peak CCU, and Positive Review Rate to be our key explanatory variables.
 
+```{python}
+import pandas as pd
+df = pd.read_csv('games.csv')
+```
+
 ```{python data wrangling}
 #| label: data-wrangling
 #| warning: false
@@ -77,12 +82,18 @@ df['positive_rate'] = df['positive'] / (df['positive'] + df['negative'])
 #Turn estimated owners to a categorical variable
 df['estimated_owners'] = pd.Categorical(df['estimated_owners'])
 
+#Count only the top 10 publishers
+top10 = df['publishers'].value_counts().nlargest(10).index
+df['publishers'] = df['publishers'].apply(lambda x: x if x in top10 else 'others')
+
 #Get only the main genre
-df['genres'] = df['genres'].apply(lambda x: x[:1] if len(x) > 1 else x)
+df['genres'] = df['genres'].apply(lambda x: x.split(","))
+df['genres'] = df['genres'].apply(lambda x: x[0])
+df['genres'] = df['genres'].str.strip("[]'")
 
 df = df.drop(columns=['release_date', 'windows', 'mac', 'linux', 'positive', 'negative'])
 
-df.to_csv('games.csv', index=False)
+df.to_csv('games_cleaned.csv', index=False)
 ```
 
 #### Data Wrangling and Transformation
@@ -126,7 +137,6 @@ ggplot(games_filtered, aes(x = price, y = positive_rate)) +
 ggplot(games, aes(x = price, y = estimated_owners)) + 
   
 ```
-
 
 ```{r}
 price_trend <- games %>%
