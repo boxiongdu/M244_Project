@@ -36,10 +36,9 @@ from sklearn.metrics import mean_squared_error
 ```
 
 ```{python}
-df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
+df = pd.read_csv('/Users/brodydu/Desktop/project/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
-
 
 ```{python}
 df = df.dropna() #dropping NA positive rate
@@ -111,7 +110,16 @@ mean_squared_error(y_train, y_pred_train_lasso)
 mean_squared_error(y_test, y_pred_test_lasso)
 ```
 
+## Results
+
+We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
+
+Both models exhibit substantial overfitting, with test errors approximately double their training errors. Introducing Lasso regularization raised the training MSE by about 0.31 million compared to OLS, reflecting an increase in bias, but only increased the test MSE by approximately 0.05 million. Consequently, Lasso’s generalization gap (8.77 M) is slightly narrower than that of OLS (9.03 M), though this did not translate into a meaningful reduction in out‑of‑sample error.
+
+Under the default hyperparameter settings, Lasso’s penalty has a negligible effect on predictive accuracy: both pipelines deliver similar test‑set performance of roughly 19 million MSE. This suggests that further tuning of the regularization strength or exploration of alternative modeling approaches may be necessary to achieve improved generalization.
+
 ## Discussion
+
 Our project also has several important limitations that should be acknowledged. First, many free-to-play games that became extremely popular on Steam rely heavily on in-game purchases, which are not reflected in our dataset. For example, Counter-Strike: Global Offensive (CSGO) is one of the most widely played FPS games on Steam and is free to download. However, players often spend significant amounts of money on cosmetic weapon skins, some of which feature animated effects and can cost hundreds of dollars. Our analysis does not account for this form of monetization strategy, which plays a crucial role in the game's success and revenue model.
 
 Second, Steam is not the only platform where games are sold or played. Many titles are cross-platform and also available on consoles such as the Nintendo Switch, Xbox, or PlayStation, or through other digital stores like the Epic Games Store. Players may choose different platforms based on their preferences or hardware availability. Therefore, evaluating a game’s success solely based on Steam data presents an incomplete picture, as it ignores potentially large portions of the user base and sales figures.
@@ -120,4 +128,4 @@ Third, during our data cleaning process, we computed the positive rating ratio b
 
 In terms of modeling, there is also room for improvement. Currently, we have primarily relied on linear models, which assume a straightforward relationship between predictors and outcome variable. However, we could explore nonlinear models such as Random Forest Regressors, which are useful to handle complex interactions for more possible predictor variables.
 
-Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis. 
+Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis.
