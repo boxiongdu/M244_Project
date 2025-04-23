@@ -87,6 +87,19 @@ pipeline_ols.fit(X_train, y_train)
 ```
 
 ```{python}
+coefs = pipeline_ols['estimator'].coef_
+
+feature_names = pipeline_ols['preprocess'].get_feature_names_out()
+```
+
+```{python}
+ols_coef_table = pd.DataFrame({
+    'feature': feature_names,
+    'coefficient': coefs
+})
+```
+
+```{python}
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
@@ -112,7 +125,12 @@ mean_squared_error(y_test, y_pred_test_lasso)
 
 ## Results
 
-We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
+We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
+
+| Model     | Train MSE (×10⁶) | Test MSE (×10⁶) | Gap (Test – Train) (×10⁶) |
+|:----------|:----------------:|:---------------:|:-------------------------:|
+| **OLS**   |       9.95       |      18.98      |           9.03            |
+| **Lasso** |      10.26       |      19.03      |           8.77            |
 
 Both models exhibit substantial overfitting, with test errors approximately double their training errors. Introducing Lasso regularization raised the training MSE by about 0.31 million compared to OLS, reflecting an increase in bias, but only increased the test MSE by approximately 0.05 million. Consequently, Lasso’s generalization gap (8.77 M) is slightly narrower than that of OLS (9.03 M), though this did not translate into a meaningful reduction in out‑of‑sample error.
 
