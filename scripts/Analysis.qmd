@@ -12,6 +12,8 @@ Our research question is how is median gameplay time affected by other variables
 
 This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left. The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
 
+## Methodology
+
 ```{r,message=FALSE}
 #Load R packages here
 library(reticulate)
@@ -37,7 +39,7 @@ from sklearn.decomposition import PCA
 ```
 
 ```{python}
-df = pd.read_csv('/Users/brodydu/Desktop/project/M244_Project/data/games_cleaned.csv') 
+df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
 
@@ -198,6 +200,25 @@ pca_scores = pca.fit_transform(transformed_X)
 
 df[['PC1','PC2','PC3']] = pca_scores
 ```
+
+```{python, random forests}
+# fit random forest
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+
+pipeline_rf = Pipeline([
+    ('preprocess', preprocessor),
+    ('rf', RandomForestRegressor(
+        random_state=0))])
+
+pipeline_rf.fit(X_train, y_train)
+
+y_pred_rf = pipeline_rf.predict(X_test)
+rf_mse = mean_squared_error(y_test, y_pred_rf)
+
+print(f"Random Forest Test MSE: {rf_mse:.4f}")
+```
+
 
 ## Results
 
