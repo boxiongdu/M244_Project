@@ -219,6 +219,40 @@ rf_mse = mean_squared_error(y_test, y_pred_rf)
 print(f"Random Forest Test MSE: {rf_mse:.4f}")
 ```
 
+```{python, decision-tree plot}
+from sklearn.tree import plot_tree
+
+single_tree = pipeline_rf.named_steps['rf'].estimators_[0]
+
+plt.figure(figsize=(30, 15))
+plot_tree(single_tree,
+          feature_names=pipeline_rf.named_steps['preprocess'].get_feature_names_out(),
+          filled=True,
+          rounded=True,
+          max_depth=3,  
+          fontsize=4)
+plt.title("Decision Tree Plot in the Random Forest")
+plt.show()
+```
+
+```{python, top 10 predictors}
+# bar plot for top 10 predictors
+feature_names = pipeline_rf.named_steps['preprocess'].get_feature_names_out()
+importances = pipeline_rf.named_steps['rf'].feature_importances_
+
+top_ten = 10
+top_idx = importances.argsort()[-top_ten:][::-1]
+
+plt.figure(figsize=(10,6))
+sns.barplot(x=importances[top_idx], y=feature_names[top_idx])
+plt.title("Top 10 Predictors by Random Forest")
+plt.xlabel("Importance")
+plt.ylabel("Variables")
+plt.tight_layout()
+plt.show()
+```
+
+
 
 ## Results
 
