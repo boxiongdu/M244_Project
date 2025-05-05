@@ -33,6 +33,7 @@ from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
+from sklearn.decomposition import PCA
 ```
 
 ```{python}
@@ -100,6 +101,10 @@ ols_coef_table = pd.DataFrame({
 ```
 
 ```{python}
+ols_coef_table.sort_values('coefficient', ascending=False)
+```
+
+```{python}
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
@@ -123,14 +128,86 @@ mean_squared_error(y_train, y_pred_train_lasso)
 mean_squared_error(y_test, y_pred_test_lasso)
 ```
 
+```{python}
+pipeline_enet = Pipeline([
+    ('preprocess', preprocessor),
+    ('enet_cv', ElasticNetCV(
+        l1_ratio=[.1, .5, .9],    # mix between L1 (1.0) and L2 (0.0)
+        alphas=np.logspace(-3, 3, 50),  # range of penalty strengths
+        cv=5,
+        max_iter=5000,
+        n_jobs=-1,
+        random_state=42
+    ))
+])
+
+# 2. Fit on training data
+pipeline_enet.fit(X_train, y_train)
+
+# 3. Inspect chosen hyperparameters
+best_alpha    = pipeline_enet.named_steps['enet_cv'].alpha_
+best_l1_ratio = pipeline_enet.named_steps['enet_cv'].l1_ratio_
+print(f"Best α = {best_alpha:.4g}, Best l1_ratio = {best_l1_ratio}")
+
+# 4. Make predictions
+y_pred_train_enet = pipeline_enet.predict(X_train)
+y_pred_test_enet  = pipeline_enet.predict(X_test)
+
+# 5. Compute MSE
+mse_train = mean_squared_error(y_train, y_pred_train_enet)
+mse_test  = mean_squared_error(y_test,  y_pred_test_enet)
+gap       = mse_test - mse_train
+
+print(f"Train MSE: {mse_train:,.0f}")
+print(f"Test  MSE: {mse_test:,.0f}")
+print(f"Test–Train gap: {gap:,.0f}")
+```
+
+```{python}
+
+df_pca = PCA().fit(transformed_X)
+
+df_pca.explained_variance_.shape
+
+np.round(df_pca.explained_variance_ratio_, decimals = 5)
+```
+
+```{python}
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+
+fig, ax = plt.subplots()
+sns.lineplot(
+  x = np.arange(1, 64),
+  y = df_pca.explained_variance_ratio_,
+  ax = ax)
+ax.set(
+  xlabel = "Components",
+  ylabel = "PVE",
+  title = "Scree Plot (Unscaled Inputs)"
+)
+# the following line sets distance between each x-tick mark to 1
+ax.xaxis.set_major_locator(MultipleLocator(1)) 
+plt.show()
+```
+
+```{python}
+pca = PCA(n_components=3, random_state=42)
+pca_scores = pca.fit_transform(transformed_X)
+
+df[['PC1','PC2','PC3']] = pca_scores
+```
+
 ## Results
 
 We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
 
-| Model     | Train MSE (×10⁶) | Test MSE (×10⁶) | Gap (Test – Train) (×10⁶) |
-|:----------|:----------------:|:---------------:|:-------------------------:|
-| **OLS**   |       9.95       |      18.98      |           9.03            |
-| **Lasso** |      10.26       |      19.03      |           8.77            |
+| Model | α | l1_ratio | Train MSE (×10⁶) | Test MSE (×10⁶) | Test − Train Gap (×10⁶) |
+|-----------:|:----------:|:----------:|-----------:|-----------:|-----------:|
+| OLS | N/A | N/A | 11.237405 | 16.000333 | 4.7629283 |
+| Lasso | default | N/A | 11.241401 | 16.005884 | 4.7644833 |
+| Elastic Net | 9.541×10⁻³ | 0.50 | 11.251817 | 15.996483 | 4.744666 |
 
 Both models exhibit substantial overfitting, with test errors approximately double their training errors. Introducing Lasso regularization raised the training MSE by about 0.31 million compared to OLS, reflecting an increase in bias, but only increased the test MSE by approximately 0.05 million. Consequently, Lasso’s generalization gap (8.77 M) is slightly narrower than that of OLS (9.03 M), though this did not translate into a meaningful reduction in out‑of‑sample error.
 
