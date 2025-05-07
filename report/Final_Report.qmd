@@ -1,16 +1,43 @@
 ---
-title: "Project Preliminary Analysis"
+title: "M244 Project Final Report"
+author: "Boxiong Du, Yifei Qu"
+date: "05/13/2025"
 format: html
 editor: visual
 ---
 
 ## Introduction and Data
 
-In today's rapidly evolving digital landscape, video games have emerged as one of the most dynamic and influential forms of entertainment, reshaping how people engage with media and spend their leisure time. As the world's leading PC gaming platform, Steam has revolutionized game distribution and player interaction, offering unparalleled insights into gaming trends and consumer behavior. This project utilizes Steam's extensive game dataset to investigate the key factors that contribute to a game's success, particularly focusing on how pricing, player reviews, and popularity metrics influence engagement as measured by median playtime. By analyzing these relationships, we aim to provide data-driven insights that can help developers create more compelling gaming experiences while enabling players to make better-informed choices. Ultimately, understanding these dynamics will not only benefit individual stakeholders but also contribute to the continued growth and innovation of the gaming industry as a whole.
+In today's rapidly evolving digital landscape, video games have emerged as one of the most dynamic and influential forms of entertainment, reshaping how people engage with media and spend their leisure time (Polcyn, 2018). As the world's leading PC gaming platform, Steam has revolutionized game distribution and player interaction and boasts a large and active player base, offering unparalleled insights into gaming trends and consumer behavior(Nikitin, 2024). This project utilizes Steam's extensive game dataset to investigate the key factors that contribute to a game's success, particularly focusing on how pricing, player reviews, and popularity metrics influence engagement as measured by median playtime. By analyzing these relationships, we aim to provide data-driven insights that can help developers create more compelling gaming experiences while enabling players to make better-informed choices. Ultimately, understanding these dynamics will not only benefit individual stakeholders but also contribute to the continued growth and innovation of the gaming industry as a whole.
 
-Our research question is how is median gameplay time affected by other variables? We expect that higher-priced games will correlate with longer playtime, reflecting deeper content or premium quality; games with higher positive review rates will sustain longer engagement, as player satisfaction likely enhances retention; peak CCU will show a nonlinear relationship, where moderate popularity maximizes playtime.
+Our research question is how is median gameplay time of a game affected by other variables? We expect that higher-priced games will correlate with longer playtime, reflecting deeper content or premium quality; games with higher positive review rates will sustain longer engagement, as player satisfaction likely enhances retention; Moderate popularity measured by peak concurrent users(Peak_CCU) will maximize the playtime.
 
-This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left. The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
+This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left.
+
+### Relevant Variables
+
+MEDIAN_PLAYTIME_FOREVER - This reports the target variable: median number of minutes players have spent on the game over their entire ownership. It captures sustained engagement.
+
+PRICE - This reports the listed price of the game in U.S. dollars. It may reflect content scope and target market. Price can influence both players' expectations and their actual time investment.
+
+PUBLISHERS - This reports the name of the company that published the game. Different publishers may have varying reputations and fan bases, which could affect player engagement.
+
+GENRES - This reports the primary genre(s) of the game (e.g., Adventure, Simulation). Game mechanics and pacing often vary by genre, influencing how long players are likely to stay engaged.
+
+ESTIMATED_OWNERS - This reports a binned categorical variable estimating how many users own the game on Steam. It's usually a range with numbers, such as 50000 - 100000, 20000 - 50000, and 500000 - 1000000. Higher ownership can indicate popularity and social engagement, both of which may impact gameplay time.
+
+PEAK_CCU - This reports the all-time peak number of concurrent users for the game. This is a direct measure of popularity and potential community activity.
+
+RELEASE_YEAR - This reports the year the game was released. Newer games might benefit from modern features and active development, whereas older games may have nostalgic or classic appeal.
+
+COMPATIBLE_SYSTEMS - This reports the number of operating systems the game supports (e.g., Windows, macOS, Linux).It's a categorical variable with 3 levels indicating how many systems can the game operating on. 1 for only one compatible system, usually Windows; 2 for 2 compatible systems, usually Windows and MacOS; 3 for supporting all operating systems. Broader compatibility can lead to a larger and more diverse player base.
+
+POSITIVE_RATE - This reports the proportion of user reviews that are positive, ranging from 0% to 100%. A higher positive review rate often reflects better quality or player satisfaction, which can drive longer playtimes.
+
+
+### Data Wrangling
+
+The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
 
 ## Methodology
 
@@ -257,7 +284,7 @@ plt.show()
 We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
 
 | Model | α | l1_ratio | Train MSE (×10⁶) | Test MSE (×10⁶) | Test − Train Gap (×10⁶) |
-|---:|:--:|:--:|---:|---:|---:|
+|-----------:|:----------:|:----------:|-----------:|-----------:|-----------:|
 | OLS | N/A | N/A | 11.237405 | 16.000333 | 4.7629283 |
 | Lasso | default | N/A | 11.241401 | 16.005884 | 4.7644833 |
 | Elastic Net | 9.541×10⁻³ | 0.50 | 11.251817 | 15.996483 | 4.744666 |
@@ -277,3 +304,9 @@ Third, during our data cleaning process, we computed the positive rating ratio b
 In terms of modeling, there is also room for improvement. Currently, we have primarily relied on linear models, which assume a straightforward relationship between predictors and outcome variable. However, we could explore nonlinear models such as Random Forest Regressors, which are useful to handle complex interactions for more possible predictor variables.
 
 Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis.
+
+## References
+
+Polcyn, S. (2019). The evolution of free time throughout history. Video games as a modern leisure activity. Biuletyn Historii Wychowania, 38, 187–200. https://doi.org/10.14746/bhw.2018.38.12
+
+Nikitin, K. (2024). *Finnish game developers in transforming the industry* (Master’s thesis, University of Vaasa). University of Vaasa Institutional Repository.
