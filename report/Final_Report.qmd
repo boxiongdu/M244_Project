@@ -1,0 +1,279 @@
+---
+title: "Project Preliminary Analysis"
+format: html
+editor: visual
+---
+
+## Introduction and Data
+
+In today's rapidly evolving digital landscape, video games have emerged as one of the most dynamic and influential forms of entertainment, reshaping how people engage with media and spend their leisure time. As the world's leading PC gaming platform, Steam has revolutionized game distribution and player interaction, offering unparalleled insights into gaming trends and consumer behavior. This project utilizes Steam's extensive game dataset to investigate the key factors that contribute to a game's success, particularly focusing on how pricing, player reviews, and popularity metrics influence engagement as measured by median playtime. By analyzing these relationships, we aim to provide data-driven insights that can help developers create more compelling gaming experiences while enabling players to make better-informed choices. Ultimately, understanding these dynamics will not only benefit individual stakeholders but also contribute to the continued growth and innovation of the gaming industry as a whole.
+
+Our research question is how is median gameplay time affected by other variables? We expect that higher-priced games will correlate with longer playtime, reflecting deeper content or premium quality; games with higher positive review rates will sustain longer engagement, as player satisfaction likely enhances retention; peak CCU will show a nonlinear relationship, where moderate popularity maximizes playtime.
+
+This study uses the Steam Games Dataset, which is collected in 2023 via Steam API and Steam Spy. The original dataset contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left. The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
+
+## Methodology
+
+```{r,message=FALSE}
+#Load R packages here
+library(reticulate)
+library(tidyverse)
+```
+
+```{python import packages}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.compose import make_column_transformer
+from sklearn.model_selection import cross_validate
+from sklearn.model_selection import GroupKFold
+from sklearn.linear_model import LinearRegression, Ridge, RidgeCV
+from sklearn.linear_model import ElasticNet, ElasticNetCV
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.decomposition import PCA
+```
+
+```{python}
+df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
+#modify to your own file path
+```
+
+```{python}
+df = df.dropna() #dropping NA positive rate
+
+y = df['median_playtime_forever']
+
+X = df.drop(['name', 'median_playtime_forever'], axis=1)
+
+numerical_columns = ['price', 'peak_ccu', 'positive_rate']
+
+categorical_columns = ['publishers', 'genres', 'estimated_owners', 'release_year', 'compatible_systems']
+
+preprocessor = make_column_transformer(
+   (OneHotEncoder(drop="first", handle_unknown="ignore"), categorical_columns),
+   (StandardScaler(), numerical_columns),
+   remainder = 'passthrough',
+   verbose_feature_names_out=False, # avoid prepending preprocessor names
+)
+
+transformed_X = preprocessor.fit_transform(X)
+```
+
+```{python}
+alphas_list = 10 ** np.linspace(-2, 3, 20)
+
+pipeline_lasso = Pipeline([
+    ('preprocess', preprocessor),
+    ('estimator', ElasticNetCV(alphas=alphas_list, l1_ratio=1, max_iter=10000))
+])
+
+pipeline_ols = Pipeline([
+    ('preprocess', preprocessor),
+    ('estimator', LinearRegression())
+])
+                                                              
+```
+
+```{python}
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=20250416)
+```
+
+```{python}
+pipeline_lasso.fit(X_train, y_train)
+pipeline_ols.fit(X_train, y_train)
+```
+
+```{python}
+coefs = pipeline_ols['estimator'].coef_
+
+feature_names = pipeline_ols['preprocess'].get_feature_names_out()
+```
+
+```{python}
+ols_coef_table = pd.DataFrame({
+    'feature': feature_names,
+    'coefficient': coefs
+})
+```
+
+```{python}
+ols_coef_table.sort_values('coefficient', ascending=False)
+```
+
+```{python}
+# OLS model predictions
+y_pred_train_ols = pipeline_ols.predict(X_train)
+y_pred_test_ols = pipeline_ols.predict(X_test)
+```
+
+```{python}
+# train MSE OLS
+mean_squared_error(y_train, y_pred_train_ols)
+# test MSE OLS
+mean_squared_error(y_test, y_pred_test_ols)
+```
+
+```{python}
+# Lasso model predictions
+y_pred_train_lasso = pipeline_lasso.predict(X_train)
+y_pred_test_lasso = pipeline_lasso.predict(X_test)
+
+# train MSE lasso
+mean_squared_error(y_train, y_pred_train_lasso)
+# test MSE lasso
+mean_squared_error(y_test, y_pred_test_lasso)
+```
+
+```{python}
+pipeline_enet = Pipeline([
+    ('preprocess', preprocessor),
+    ('enet_cv', ElasticNetCV(
+        l1_ratio=[.1, .5, .9],    # mix between L1 (1.0) and L2 (0.0)
+        alphas=np.logspace(-3, 3, 50),  # range of penalty strengths
+        cv=5,
+        max_iter=5000,
+        n_jobs=-1,
+        random_state=42
+    ))
+])
+
+# 2. Fit on training data
+pipeline_enet.fit(X_train, y_train)
+
+# 3. Inspect chosen hyperparameters
+best_alpha    = pipeline_enet.named_steps['enet_cv'].alpha_
+best_l1_ratio = pipeline_enet.named_steps['enet_cv'].l1_ratio_
+print(f"Best α = {best_alpha:.4g}, Best l1_ratio = {best_l1_ratio}")
+
+# 4. Make predictions
+y_pred_train_enet = pipeline_enet.predict(X_train)
+y_pred_test_enet  = pipeline_enet.predict(X_test)
+
+# 5. Compute MSE
+mse_train = mean_squared_error(y_train, y_pred_train_enet)
+mse_test  = mean_squared_error(y_test,  y_pred_test_enet)
+gap       = mse_test - mse_train
+
+print(f"Train MSE: {mse_train:,.0f}")
+print(f"Test  MSE: {mse_test:,.0f}")
+print(f"Test–Train gap: {gap:,.0f}")
+```
+
+```{python}
+
+df_pca = PCA().fit(transformed_X)
+
+df_pca.explained_variance_.shape
+
+np.round(df_pca.explained_variance_ratio_, decimals = 5)
+```
+
+```{python}
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+
+fig, ax = plt.subplots()
+sns.lineplot(
+  x = np.arange(1, 64),
+  y = df_pca.explained_variance_ratio_,
+  ax = ax)
+ax.set(
+  xlabel = "Components",
+  ylabel = "PVE",
+  title = "Scree Plot (Unscaled Inputs)"
+)
+# the following line sets distance between each x-tick mark to 1
+ax.xaxis.set_major_locator(MultipleLocator(1)) 
+plt.show()
+```
+
+```{python}
+pca = PCA(n_components=3, random_state=42)
+pca_scores = pca.fit_transform(transformed_X)
+
+df[['PC1','PC2','PC3']] = pca_scores
+```
+
+```{python, random forests}
+# fit random forest
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+
+pipeline_rf = Pipeline([
+    ('preprocess', preprocessor),
+    ('rf', RandomForestRegressor(
+        random_state=0))])
+
+pipeline_rf.fit(X_train, y_train)
+
+y_pred_rf = pipeline_rf.predict(X_test)
+rf_mse = mean_squared_error(y_test, y_pred_rf)
+
+print(f"Random Forest Test MSE: {rf_mse:.4f}")
+```
+
+```{python, decision-tree plot}
+from sklearn.tree import plot_tree
+
+single_tree = pipeline_rf.named_steps['rf'].estimators_[0]
+
+plt.figure(figsize=(30, 15))
+plot_tree(single_tree,
+          feature_names=pipeline_rf.named_steps['preprocess'].get_feature_names_out(),
+          filled=True,
+          rounded=True,
+          max_depth=3,  
+          fontsize=4)
+plt.title("Decision Tree Plot in the Random Forest")
+plt.show()
+```
+
+```{python, top 10 predictors}
+# bar plot for top 10 predictors
+feature_names = pipeline_rf.named_steps['preprocess'].get_feature_names_out()
+importances = pipeline_rf.named_steps['rf'].feature_importances_
+
+top_ten = 10
+top_idx = importances.argsort()[-top_ten:][::-1]
+
+plt.figure(figsize=(10,6))
+sns.barplot(x=importances[top_idx], y=feature_names[top_idx])
+plt.title("Top 10 Predictors by Random Forest")
+plt.xlabel("Importance")
+plt.ylabel("Variables")
+plt.tight_layout()
+plt.show()
+```
+
+## Results
+
+We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
+
+| Model | α | l1_ratio | Train MSE (×10⁶) | Test MSE (×10⁶) | Test − Train Gap (×10⁶) |
+|---:|:--:|:--:|---:|---:|---:|
+| OLS | N/A | N/A | 11.237405 | 16.000333 | 4.7629283 |
+| Lasso | default | N/A | 11.241401 | 16.005884 | 4.7644833 |
+| Elastic Net | 9.541×10⁻³ | 0.50 | 11.251817 | 15.996483 | 4.744666 |
+
+Both models exhibit substantial overfitting, with test errors approximately double their training errors. Introducing Lasso regularization raised the training MSE by about 0.31 million compared to OLS, reflecting an increase in bias, but only increased the test MSE by approximately 0.05 million. Consequently, Lasso’s generalization gap (8.77 M) is slightly narrower than that of OLS (9.03 M), though this did not translate into a meaningful reduction in out‑of‑sample error.
+
+Under the default hyperparameter settings, Lasso’s penalty has a negligible effect on predictive accuracy: both pipelines deliver similar test‑set performance of roughly 19 million MSE. This suggests that further tuning of the regularization strength or exploration of alternative modeling approaches may be necessary to achieve improved generalization.
+
+## Discussion
+
+Our project also has several important limitations that should be acknowledged. First, many free-to-play games that became extremely popular on Steam rely heavily on in-game purchases, which are not reflected in our dataset. For example, Counter-Strike: Global Offensive (CSGO) is one of the most widely played FPS games on Steam and is free to download. However, players often spend significant amounts of money on cosmetic weapon skins, some of which feature animated effects and can cost hundreds of dollars. Our analysis does not account for this form of monetization strategy, which plays a crucial role in the game's success and revenue model.
+
+Second, Steam is not the only platform where games are sold or played. Many titles are cross-platform and also available on consoles such as the Nintendo Switch, Xbox, or PlayStation, or through other digital stores like the Epic Games Store. Players may choose different platforms based on their preferences or hardware availability. Therefore, evaluating a game’s success solely based on Steam data presents an incomplete picture, as it ignores potentially large portions of the user base and sales figures.
+
+Third, during our data cleaning process, we computed the positive rating ratio by dividing the number of positive reviews by the total number of reviews. However, this method can be misleading for games with very few reviews, sometimes only one or two. In such cases, a single review can skew the ratio to 100% or 0%, which does not meaningfully reflect the broader sentiment of the player community. In hindsight, we should have incorporated the total number of reviews as a separate feature or applied a Bayesian adjustment to dampen extreme values caused by small sample sizes.
+
+In terms of modeling, there is also room for improvement. Currently, we have primarily relied on linear models, which assume a straightforward relationship between predictors and outcome variable. However, we could explore nonlinear models such as Random Forest Regressors, which are useful to handle complex interactions for more possible predictor variables.
+
+Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis.
