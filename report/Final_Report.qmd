@@ -137,15 +137,18 @@ The correlation matrix between numerical variables and playtime shows that price
 
 ```{python}
 #| echo: false
+#| message: false
+#| warning: false
 yearly_trend = df.groupby('release_year')['median_playtime_forever'].mean()
 
 plt.figure(figsize=(10, 5))
 sns.lineplot(x=yearly_trend.index, y=yearly_trend.values)
-plt.title("Average Median Playtime by Release Year")
+plt.title("Figure 2: Average Median Playtime by Release Year")
 plt.xlabel("Release Year")
 plt.ylabel("Average Median Playtime")
 plt.show()
 ```
+Figure 2 shows that average median playtime increases over time until around 2019, then drops sharply post-2020, indicating that that release year itself affects playtime, possibly due to changes in game design trends, COVID-19 increasing playtime for games released around 2019–2020, and market saturation or shorter gameplay loops in newer titles.
 
 ```{python}
 #| echo: false
@@ -153,9 +156,10 @@ plt.show()
 #| warning: false
 import matplotlib.patches as mpatches
 
-cat_cols = ['publishers', 'genres', 'estimated_owners']
+cat_cols = ['genres', 'estimated_owners']
+figure_labels = ['Figure 3', 'Figure 4']  # Add more if needed
 
-for col in cat_cols:
+for i, col in enumerate(cat_cols):
     plt.figure(figsize=(10, 6))
     
     top_vals = df[col].value_counts().nlargest(10).index
@@ -169,7 +173,7 @@ for col in cat_cols:
     
     plt.xticks(rotation=45)
     plt.ylim(0, 10000)
-    plt.title(f"Median Playtime by Top {col} Categories")
+    plt.title(f"{figure_labels[i]}: Median Playtime by Top {col} Categories")
     plt.xlabel(col)
     plt.ylabel("Median Playtime (minutes)")
     
@@ -178,13 +182,19 @@ for col in cat_cols:
     
     plt.tight_layout()
     plt.show()
+
 ```
+In figure 3, genres clearly differ in how long players tend to engage with the game that Simulation and RPG games have higher medians and wider IQRs, suggesting longer, more immersive gameplay. Casual and Free to Play games show lower medians, fitting expectations for shorter, more repetitive sessions. In figure 4, the boxplot of median gameplay by top Estimated_owners category shows that games with more owners tend to have higher playtime, especially in the upper bins from 5M to 20M.
+
+
+
+### Models
 
 ```{python}
 #| echo: false
 #| message: false
 #| warning: false
->>>>>>> 0055a315a79be94d12a8bd511c3854a7855b4425
+
 alphas_list = 10 ** np.linspace(-2, 3, 20)
 
 pipeline_lasso = Pipeline([
@@ -315,6 +325,7 @@ Conversely, several publishers and release years reduce expected gameplay time. 
 df_pca = PCA().fit(transformed_X)
 ```
 
+<<<<<<< HEAD
 
 ```{python PCA Scree plot}
 #| echo: false
@@ -332,6 +343,7 @@ ax.set(
 )
 
 plt.show()
+
 ```
 
 
@@ -528,7 +540,7 @@ Third, during our data cleaning process, we computed the positive rating ratio b
 
 ### Future Work
 
-For future improvement, we could incorporate the total number of reviews as a separate feature and make models more reliable by adding an interaction term into it. Also, we could filter out all games that have in-game purchases.
+For future improvement, the first thing we can improve on is feature engineering. We could incorporate the total number of reviews as a separate feature and have a more careful approach in dealing with categorical variables such as publishers and game genres. We also consider adding interaction terms and filtering out all games that have in-game purchases. What's more, we believe implementing more non-linear model will yield better results.
 
 ### Ethical Considerations
 
