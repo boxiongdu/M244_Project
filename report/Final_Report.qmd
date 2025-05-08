@@ -34,11 +34,36 @@ COMPATIBLE_SYSTEMS - This reports the number of operating systems the game suppo
 
 POSITIVE_RATE - This reports the proportion of user reviews that are positive, ranging from 0% to 100%. A higher positive review rate often reflects better quality or player satisfaction, which can drive longer playtimes.
 
+## Methodology
+
 ### Data Wrangling
 
-The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables: 1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical. 2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable. 3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game. 4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable. 5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
+The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0. Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables:
 
-## Methodology
+1\. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.
+
+2\. Combined three system compatibility columns into one, and taking the sum of system dummies so that this also becomes a categorical variable.
+
+3\. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game.
+
+4\. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable.
+
+5\. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.
+
+### Data Preprocessing
+
+We began by separating our data into a feature matrix, X, and our target variable, y, which represents median gameplay time. To prepare the features for modeling, we built a transformation pipeline that first converts all categorical variables—genres, publishers, estimated owners, release year, and compatible systems—into one‑hot encoded indicators while dropping the first category for each variable to prevent collinearity. Next, the pipeline standardizes every numerical predictor so that each has a mean of zero and a standard deviation of one. Any features not requiring encoding or scaling are passed through unchanged. We fit this entire transformation pipeline using only the training data and then applied it without modification to the test data, thereby ensuring that no information from the evaluation set influenced the preprocessing stage.
+
+### Dimensionality Reduction (PCA)
+We performed Principal Component Analysis on the preprocessed feature matrix to explore multicollinearity and understand how many orthogonal directions capture most of the variance. A scree plot of the first 64 components revealed the individual variance explained by each, and a cumulative variance curve showed the number of components required to exceed 80 % of total variance. We inspected the loading vectors for the top ten principal components to interpret which original features contributed most strongly. Although this analysis guided our understanding of feature redundancy, we did not reduce the feature set for modeling and instead used the full transformed matrix in all predictive pipelines.
+
+Although PCA provided insight into variable redundancy, all subsequent predictive models were trained on the full preprocessed feature set rather than on a reduced subspace.
+
+### Predictive Modeling
+We implemented four regression approaches within identical preprocessing pipelines. The first was ordinary least squares regression to serve as a baseline. The second used Lasso (ℓ₁) regularization with automatic penalty selection via cross‐validated ElasticNetCV at an l1_ratio of 1. The third employed Elastic Net, tuning both the mixing parameter (l1_ratio values of 0.1, 0.5, and 0.9) and the regularization strength (α on a logarithmic grid from 10⁻³ to 10³) through five‐fold cross‐validation. Finally, we trained a random forest regressor with 100 trees to provide a nonparametric benchmark capable of capturing nonlinear interactions. All models were trained on 70 % of the data (random_state fixed) and evaluated on the remaining 30 %.
+
+### Evaluation Metrics and Model Comparison
+Model performance was assessed by computing mean squared error on both training and test sets. We also calculated the generalization gap—the difference between test and train MSE—as an indicator of overfitting. For the linear models, we examined the estimated coefficients to identify which features had the greatest positive or negative influence on gameplay time. For the random forest, we visualized a representative decision tree to understand key feature splits. These results showed that Elastic Net offered the best trade‑off between bias and variance among the linear methods, while the random forest captured additional nonlinear structure at the cost of a larger generalization gap.
 
 ```{r,message=FALSE}
 #Load R packages here
@@ -90,7 +115,7 @@ preprocessor = make_column_transformer(
 transformed_X = preprocessor.fit_transform(X)
 ```
 
-```{python}
+```{python defining pipelines}
 alphas_list = 10 ** np.linspace(-2, 3, 20)
 
 pipeline_lasso = Pipeline([
@@ -102,6 +127,18 @@ pipeline_ols = Pipeline([
     ('preprocess', preprocessor),
     ('estimator', LinearRegression())
 ])
+
+pipeline_enet = Pipeline([
+    ('preprocess', preprocessor),
+    ('enet_cv', ElasticNetCV(
+        l1_ratio=[.1, .5, .9],    # mix between L1 (1.0) and L2 (0.0)
+        alphas=np.logspace(-3, 3, 50),  # range of penalty strengths
+        cv=5,
+        max_iter=5000,
+        n_jobs=-1,
+        random_state=42
+    ))
+]) 
                                                               
 ```
 
@@ -113,6 +150,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 ```{python}
 pipeline_lasso.fit(X_train, y_train)
 pipeline_ols.fit(X_train, y_train)
+pipeline_enet.fit(X_train, y_train)
 ```
 
 ```{python}
@@ -157,52 +195,40 @@ mean_squared_error(y_test, y_pred_test_lasso)
 ```
 
 ```{python}
-pipeline_enet = Pipeline([
-    ('preprocess', preprocessor),
-    ('enet_cv', ElasticNetCV(
-        l1_ratio=[.1, .5, .9],    # mix between L1 (1.0) and L2 (0.0)
-        alphas=np.logspace(-3, 3, 50),  # range of penalty strengths
-        cv=5,
-        max_iter=5000,
-        n_jobs=-1,
-        random_state=42
-    ))
-])
-
-# 2. Fit on training data
-pipeline_enet.fit(X_train, y_train)
-
-# 3. Inspect chosen hyperparameters
 best_alpha    = pipeline_enet.named_steps['enet_cv'].alpha_
 best_l1_ratio = pipeline_enet.named_steps['enet_cv'].l1_ratio_
 print(f"Best α = {best_alpha:.4g}, Best l1_ratio = {best_l1_ratio}")
 
-# 4. Make predictions
+
 y_pred_train_enet = pipeline_enet.predict(X_train)
 y_pred_test_enet  = pipeline_enet.predict(X_test)
 
-# 5. Compute MSE
 mse_train = mean_squared_error(y_train, y_pred_train_enet)
 mse_test  = mean_squared_error(y_test,  y_pred_test_enet)
 gap       = mse_test - mse_train
-
-print(f"Train MSE: {mse_train:,.0f}")
-print(f"Test  MSE: {mse_test:,.0f}")
-print(f"Test–Train gap: {gap:,.0f}")
 ```
 
 ```{python}
+#Get the coefficients
+coefs = pipeline_lasso['estimator'].coef_
 
+feature_names = pipeline_lasso['preprocess'].get_feature_names_out()
+
+lasso_coef_table = pd.DataFrame({
+    'feature': feature_names,
+    'coefficient': coefs
+})
+
+lasso_coef_table.sort_values('coefficient', ascending=False)
+```
+
+```{python}
 df_pca = PCA().fit(transformed_X)
-
-df_pca.explained_variance_.shape
 
 np.round(df_pca.explained_variance_ratio_, decimals = 5)
 ```
 
-```{python}
-import seaborn as sns
-import matplotlib.pyplot as plt
+```{python PCA Scree plot}
 from matplotlib.ticker import MultipleLocator
 
 fig, ax = plt.subplots()
@@ -220,11 +246,79 @@ ax.xaxis.set_major_locator(MultipleLocator(1))
 plt.show()
 ```
 
-```{python}
-pca = PCA(n_components=3, random_state=42)
-pca_scores = pca.fit_transform(transformed_X)
+```{python PCA Cumulative pve}
+plt.figure(figsize=(5,3))
+plt.plot(np.arange(1, len(df_pca.explained_variance_ratio_)+1), np.cumsum(df_pca.explained_variance_ratio_), marker='o')
+plt.xlabel('PC #'); plt.ylabel('Cumulative PVE')
+plt.axhline(0.8, color='gray', linestyle='--')  # 80% threshold
+plt.title('Cumulative Explained Variance')
+plt.tight_layout()
+plt.show()
+```
 
-df[['PC1','PC2','PC3']] = pca_scores
+```{python PCA loadings}
+feature_names = preprocessor.get_feature_names_out()
+pca = PCA(n_components=10, random_state=42)
+pca_scores = pca.fit_transform(transformed_X)
+#PCA Contributions
+loadings = pd.DataFrame(
+    pca.components_.T,
+    index=feature_names,
+    columns=[f"PC{i+1}" for i in range(pca.n_components_)]
+)
+```
+
+```{python}
+n = len(feature_names)
+
+# build tick positions: every 5th up until n‑5, then the last 5 positions
+every_fifth = list(range(0, n-5, 5))
+last_five   = list(range(n-5, n))
+tick_positions = sorted(set(every_fifth + last_five))
+
+# plot
+fig, ax = plt.subplots(figsize=(6, 12))
+im = ax.imshow(loadings, aspect='auto')
+
+# x ticks
+ax.set_xticks(np.arange(loadings.shape[1]))
+ax.set_xticklabels(loadings.columns, rotation=0)
+
+# y ticks: only at our selected positions
+ax.set_yticks(tick_positions)
+ax.set_yticklabels(feature_names[tick_positions], fontsize=5, rotation=15, ha='right')
+
+# colorbar and layout
+fig.colorbar(im, ax=ax, label="Loading")
+plt.title("PCA Loadings Heatmap")
+plt.show()
+```
+
+```{python}
+pipeline_pca_lr = Pipeline([
+    ('pre', preprocessor),
+    ('pca', PCA(n_components=10, random_state=42)),
+    ('lr', LinearRegression())
+])
+
+
+pipeline_pca_lr.fit(X_train, y_train)
+
+
+y_train_pca_pred = pipeline_pca_lr.predict(X_train)
+y_test_pca_pred = pipeline_pca_lr.predict(X_test)
+
+
+mse_train_pca = mean_squared_error(y_train, y_train_pca_pred)
+mse_test_pca = mean_squared_error(y_test, y_test_pca_pred)
+gap_pca = mse_test_pca - mse_train_pca
+
+
+results = [
+    {'model': 'OLS', 'train_mse': 11237404.75, 'test_mse': 16000332.99},
+    {'model': 'Lasso', 'train_mse': 11241401.01, 'test_mse': 16005884.32},
+    {'model': 'PCA + LR', 'train_mse': mse_train_pca, 'test_mse': mse_test_pca}
+]
 ```
 
 ```{python, random forests}
@@ -300,19 +394,17 @@ Our project also has several important limitations that should be acknowledged. 
 
 Second, Steam is not the only platform where games are sold or played. Many titles are cross-platform and also available on consoles such as the Nintendo Switch, Xbox, or PlayStation, or through other digital stores like the Epic Games Store. Players may choose different platforms based on their preferences or hardware availability. Therefore, evaluating a game’s success solely based on Steam data presents an incomplete picture, as it ignores potentially large portions of the user base and sales figures.
 
-Third, during our data cleaning process, we computed the positive rating ratio by dividing the number of positive reviews by the total number of reviews. However, this method can be misleading for games with very few reviews, sometimes only one or two. In such cases, a single review can skew the ratio to 100% or 0%, which does not meaningfully reflect the broader sentiment of the player community. 
-
+Third, during our data cleaning process, we computed the positive rating ratio by dividing the number of positive reviews by the total number of reviews. However, this method can be misleading for games with very few reviews, sometimes only one or two. In such cases, a single review can skew the ratio to 100% or 0%, which does not meaningfully reflect the broader sentiment of the player community.
 
 ### Future Work
-For future improvement, we could incorporate the total number of reviews as a separate feature and make models more reliable by adding an interaction term into it. Also, we could filter out all games that have in-game purchases.
 
+For future improvement, we could incorporate the total number of reviews as a separate feature and make models more reliable by adding an interaction term into it. Also, we could filter out all games that have in-game purchases.
 
 ### Ethical Considerations
 
 Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis.
 
 ## Conclusions
-
 
 ## References
 
