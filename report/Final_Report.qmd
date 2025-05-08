@@ -16,6 +16,7 @@ This study uses the Steam Games Dataset, which is collected in 2023 via Steam AP
 
 ### Relevant Variables
 
+We will include the following variables in our models:
 MEDIAN_PLAYTIME_FOREVER - This reports the target variable: median number of minutes players have spent on the game over their entire ownership. It captures sustained engagement.
 
 PRICE - This reports the listed price of the game in U.S. dollars. It may reflect content scope and target market. Price can influence both players' expectations and their actual time investment.
@@ -65,13 +66,13 @@ We implemented four regression approaches within identical preprocessing pipelin
 ### Evaluation Metrics and Model Comparison
 Model performance was assessed by computing mean squared error on both training and test sets. We also calculated the generalization gap—the difference between test and train MSE—as an indicator of overfitting. For the linear models, we examined the estimated coefficients to identify which features had the greatest positive or negative influence on gameplay time. For the random forest, we visualized a representative decision tree to understand key feature splits. These results showed that Elastic Net offered the best trade‑off between bias and variance among the linear methods, while the random forest captured additional nonlinear structure at the cost of a larger generalization gap.
 
-```{r,message=FALSE}
-#Load R packages here
+```{r import packages}
 library(reticulate)
-library(tidyverse)
 ```
 
+
 ```{python import packages}
+#| echo: false
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -90,11 +91,13 @@ from sklearn.decomposition import PCA
 ```
 
 ```{python}
-df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
+#| echo: false
+df = pd.read_csv('/Users/brodydu/Desktop/project/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
 
-```{python}
+```{python data wrangling}
+#| echo: false
 df = df.dropna() #dropping NA positive rate
 
 y = df['median_playtime_forever']
@@ -114,8 +117,74 @@ preprocessor = make_column_transformer(
 
 transformed_X = preprocessor.fit_transform(X)
 ```
+### Highlights from EDA
 
+
+<<<<<<< HEAD
 ```{python defining pipelines}
+=======
+```{python}
+#| echo: false
+#| message: false
+#| warning: false
+corr_matrix = df[numerical_columns + ['median_playtime_forever']].corr()
+plt.figure(figsize=(10, 6))
+sns.heatmap(corr_matrix, annot=True, cmap="coolwarm")
+plt.title("Figure 1: Correlation Between Numerical Vairables and Playtime")
+plt.show()
+```
+The correlation matrix between numerical variables and playtime shows that price, peak concurrent users, and positive review rates all have a positive correlation with median playtime of games, but very weak.
+
+```{python}
+#| echo: false
+yearly_trend = df.groupby('release_year')['median_playtime_forever'].mean()
+
+plt.figure(figsize=(10, 5))
+sns.lineplot(x=yearly_trend.index, y=yearly_trend.values)
+plt.title("Average Median Playtime by Release Year")
+plt.xlabel("Release Year")
+plt.ylabel("Average Median Playtime")
+plt.show()
+```
+
+```{python}
+#| echo: false
+#| message: false
+#| warning: false
+import matplotlib.patches as mpatches
+
+cat_cols = ['publishers', 'genres', 'estimated_owners']
+
+for col in cat_cols:
+    plt.figure(figsize=(10, 6))
+    
+    top_vals = df[col].value_counts().nlargest(10).index
+    data = df[df[col].isin(top_vals)]
+    
+    palette = sns.color_palette("tab10", n_colors=10)
+    color_dict = dict(zip(top_vals, palette))
+    
+    sns.boxplot(data=data, x=col, y='median_playtime_forever',
+                palette=color_dict)
+    
+    plt.xticks(rotation=45)
+    plt.ylim(0, 10000)
+    plt.title(f"Median Playtime by Top {col} Categories")
+    plt.xlabel(col)
+    plt.ylabel("Median Playtime (minutes)")
+    
+    handles = [mpatches.Patch(color=color_dict[cat], label=cat) for cat in top_vals]
+    plt.legend(handles=handles, title=col, bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    plt.tight_layout()
+    plt.show()
+```
+
+```{python}
+#| echo: false
+#| message: false
+#| warning: false
+>>>>>>> 0055a315a79be94d12a8bd511c3854a7855b4425
 alphas_list = 10 ** np.linspace(-2, 3, 20)
 
 pipeline_lasso = Pipeline([
@@ -143,58 +212,46 @@ pipeline_enet = Pipeline([
 ```
 
 ```{python}
+#| echo: false
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=20250416)
 ```
 
 ```{python}
+#| echo: false
 pipeline_lasso.fit(X_train, y_train)
 pipeline_ols.fit(X_train, y_train)
 pipeline_enet.fit(X_train, y_train)
 ```
 
-```{python}
-coefs = pipeline_ols['estimator'].coef_
-
-feature_names = pipeline_ols['preprocess'].get_feature_names_out()
-```
-
-```{python}
-ols_coef_table = pd.DataFrame({
-    'feature': feature_names,
-    'coefficient': coefs
-})
-```
-
-```{python}
-ols_coef_table.sort_values('coefficient', ascending=False)
-```
-
-```{python}
+```{python OLS fit}
+#| echo: false
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
-```
 
-```{python}
-# train MSE OLS
-mean_squared_error(y_train, y_pred_train_ols)
+ols_mse_train = mean_squared_error(y_train, y_pred_train_ols)
 # test MSE OLS
-mean_squared_error(y_test, y_pred_test_ols)
+ols_mse_test = mean_squared_error(y_test, y_pred_test_ols)
 ```
 
-```{python}
+
+```{python Lasso fit}
+#| echo: false
 # Lasso model predictions
 y_pred_train_lasso = pipeline_lasso.predict(X_train)
 y_pred_test_lasso = pipeline_lasso.predict(X_test)
 
 # train MSE lasso
-mean_squared_error(y_train, y_pred_train_lasso)
+lasso_mse_train = mean_squared_error(y_train, y_pred_train_lasso)
 # test MSE lasso
-mean_squared_error(y_test, y_pred_test_lasso)
+lasso_mse_test = mean_squared_error(y_test, y_pred_test_lasso)
 ```
 
-```{python}
+```{python Elastic net fit}
+#| echo: false
+
+# 3. Inspect chosen hyperparameters
 best_alpha    = pipeline_enet.named_steps['enet_cv'].alpha_
 best_l1_ratio = pipeline_enet.named_steps['enet_cv'].l1_ratio_
 print(f"Best α = {best_alpha:.4g}, Best l1_ratio = {best_l1_ratio}")
@@ -203,12 +260,15 @@ print(f"Best α = {best_alpha:.4g}, Best l1_ratio = {best_l1_ratio}")
 y_pred_train_enet = pipeline_enet.predict(X_train)
 y_pred_test_enet  = pipeline_enet.predict(X_test)
 
-mse_train = mean_squared_error(y_train, y_pred_train_enet)
-mse_test  = mean_squared_error(y_test,  y_pred_test_enet)
-gap       = mse_test - mse_train
+enet_mse_train = mean_squared_error(y_train, y_pred_train_enet)
+enet_mse_test  = mean_squared_error(y_test,  y_pred_test_enet)
+gap       = enet_mse_test - enet_mse_train
 ```
 
+## Results
+
 ```{python}
+#| echo: false
 #Get the coefficients
 coefs = pipeline_lasso['estimator'].coef_
 
@@ -219,16 +279,45 @@ lasso_coef_table = pd.DataFrame({
     'coefficient': coefs
 })
 
-lasso_coef_table.sort_values('coefficient', ascending=False)
+top10    = lasso_coef_table.nlargest(10, 'coefficient')
+bottom10 = lasso_coef_table.nsmallest(10, 'coefficient')
 ```
+### Coefficients
 
+| Feature                              | Coefficient |
+|:-------------------------------------|------------:|
+| genres_others                        | 2985.291907 |
+| genres_Simulation                    |  899.312064 |
+| publishers\_\['Fulqrum Publishing'\] |  772.646878 |
+| estimated_owners_20000000 - 50000000 |  670.164379 |
+| publishers\_\['SEGA'\]               |  486.142703 |
+| release_year_2020                    |  433.267236 |
+| estimated_owners_50000 - 100000      |  426.285499 |
+| estimated_owners_5000000 - 10000000  |  426.152905 |
+| release_year_2019                    |  413.313573 |
+| genres_RPG                           |  331.760075 |
+| publishers\_\['Kagura Games'\]       | -206.560163 |
+| publishers\_\['Devolver Digital'\]   | -181.939496 |
+| release_year_2009                    | -154.179173 |
+| release_year_2024                    | -127.250029 |
+| release_year_2010                    | -111.642857 |
+| release_year_2012                    |  -71.802286 |
+| release_year_2013                    |  -63.125205 |
+| release_year_2023                    |  -47.393112 |
+| publishers\_\['Square Enix'\]        |  -45.854015 |
+| publishers_others                    |  -25.532638 |
+
+The coefficient table above ranks the top positive and negative drivers of median gameplay time under our Elastic Net model (with 10 principal components retained for interpretability). On the positive side, games classified in the “others” genre enjoy the largest boost—adding roughly 2,985 minutes—while simulation titles contribute nearly 900 additional minutes relative to the reference categories. Published by Fulqrum Publishing corresponds to an increase of about 773 minutes, and titles with 20 million–50 million estimated owners add roughly 670 minutes. SEGA‐published games and titles released in 2020 each add over 400 minutes, as do games with 50 000–100 000 or 5 million–10 million owners. RPGs also feature among the top positive predictors, contributing around 332 minutes.
+
+Conversely, several publishers and release years reduce expected gameplay time. Kagura Games titles subtract about 207 minutes, and Devolver Digital games subtract about 182 minutes. Older release years—2009 and 2010—reduce playtime by roughly 154 and 112 minutes, respectively, while more recent years (2012–2014 and 2023–2024) exert progressively smaller negative impacts (– 47 to – 127 minutes). Square Enix publications and the catch‑all “other” publisher category have modest negative coefficients (– 46 and – 26 minutes). Together, these coefficients illuminate which features most strongly influence player engagement as measured by median gameplay time.
 ```{python}
+#| echo: false
 df_pca = PCA().fit(transformed_X)
-
-np.round(df_pca.explained_variance_ratio_, decimals = 5)
 ```
+
 
 ```{python PCA Scree plot}
+#| echo: false
 from matplotlib.ticker import MultipleLocator
 
 fig, ax = plt.subplots()
@@ -239,24 +328,31 @@ sns.lineplot(
 ax.set(
   xlabel = "Components",
   ylabel = "PVE",
-  title = "Scree Plot (Unscaled Inputs)"
+  title = "Figure 1"
 )
-# the following line sets distance between each x-tick mark to 1
-ax.xaxis.set_major_locator(MultipleLocator(1)) 
+
 plt.show()
 ```
+
 
 ```{python PCA Cumulative pve}
 plt.figure(figsize=(5,3))
 plt.plot(np.arange(1, len(df_pca.explained_variance_ratio_)+1), np.cumsum(df_pca.explained_variance_ratio_), marker='o')
 plt.xlabel('PC #'); plt.ylabel('Cumulative PVE')
 plt.axhline(0.8, color='gray', linestyle='--')  # 80% threshold
-plt.title('Cumulative Explained Variance')
+plt.title('Figure 2')
 plt.tight_layout()
 plt.show()
 ```
 
-```{python PCA loadings}
+### PCA
+The scree plot (Figure 1) shows that the first principal component accounts for approximately 22 % of the variance in the preprocessed feature space, the second about 15 %, and the third about 3.5 %. Thereafter each additional component explains progressively less (the tenth component contributes roughly 1 %). When we examine the cumulative proportion of variance explained (PVE), the first five components capture about 55 % of the variance, and by ten components we reach roughly 78 % (just shy of our 80 % target). Although reaching 80 % would require around 13 components, we elected to proceed with 10 principal components as a representation that still captures the bulk of the structure in the data.
+
+```{python}
+#| echo: false
+pca = PCA(n_components=3, random_state=42)
+pca_scores = pca.fit_transform(transformed_X)
+
 feature_names = preprocessor.get_feature_names_out()
 pca = PCA(n_components=10, random_state=42)
 pca_scores = pca.fit_transform(transformed_X)
@@ -293,8 +389,48 @@ fig.colorbar(im, ax=ax, label="Loading")
 plt.title("PCA Loadings Heatmap")
 plt.show()
 ```
+PC 1 (Compatibility vs. Platform Restriction)
+The strongest positive loading is on compatible_systems_3 (games available on three platforms), with a secondary positive contribution from peak_pgc (higher peak concurrent users). Games that run on more platforms and draw larger simultaneous audiences score highly on PC 1. Features like compatible_systems_2 and lower ownership bins load only weakly. PC 1 therefore differentiates broadly available, high‑traffic titles from more narrowly supported ones.
+
+PC 2 (Two‑System vs. Three‑System Contrast)
+PC 2 shows a large negative loading on compatible_systems_2 and a positive loading on compatible_systems_3. It effectively contrasts games that appear on exactly two platforms (low PC 2 scores) with those on three (high PC 2 scores). All other features load near zero, confirming that platform breadth is the sole driver of this component.
+
+PC 3 (Engagement Intensity vs. Review Positivity)
+The most negative loading is on peak_pgc, while positive_rate loads positively. High‑intensity titles (big peaks) receive low PC 3 scores, whereas games with high positive‑review rates score high. PC 3 thus separates “blockbuster” crowd‑pullers from smaller titles that nonetheless enjoy enthusiastic critical reception.
+
+PC 4 (Low‑Ownership Tier Contrast)
+A moderate positive loading appears on the 100 000–200 000 owners bin, with smaller contributions from adjacent bins. PC 4 distinguishes moderately owned games from both low‑ownership (< 50 000) and very high‑ownership (> 1 million) titles. This axis highlights variation in the “mid‑tail” of game popularity.
+
+PC 5 (Mid‑Tail Ownership vs. Early Release Years)
+PC 5 again loads positively on the 100 000–200 000 ownership bin, but also shows negative weight on very early release years (for example, release_year_2001 and release_year_2006). Titles in that mid‑ownership tier—but released more recently—score highly on PC 5, separating them from early‑era games with similar owner counts.
+
+PC 6 (Adventure‑Genre Emphasis)
+The dominant positive loading is on genres_Adventure, with smaller positive weights on a handful of publishers (for example, SEGA). PC 6 thus marks out adventure‑style titles in our dataset.
+
+PC 7 and PC 8 (Sub‑Genre and Publisher Nuances)
+PC 7 loads modestly on certain ownership bins and a couple of niche genres (for example, Racing). PC 8 shows a positive loading on owners_200 000–500 000 and a negative loading on peak_pgc, capturing another slice of mid‑range popularity versus raw engagement.
+
+PC 9 (Release‑Year “2016 Spike”)
+A strong positive loading on release_year_2016 indicates that games released in 2016 have unique covariation in our feature set—perhaps clustering around particular publishers or ownership profiles that year.
+
+PC 10 (Release‑Year “2021 Effect”)
+The largest loading is on release_year_2021, separating the newest cohort of games (with their own typical owner counts and review rates) from older titles.
+
+Taken together, the first ten PCs reveal that platform compatibility, ownership tiers, engagement versus review balance, genre, and release‑year cohorts are the principal drivers of variation in our transformed feature space. By retaining these ten components (approximately 78 % of total variance), we capture the major structural patterns—platform scope, popularity strata, and temporal/genre effects—while discarding lower‑level noise.
+
+### Regression Models
+
+| Model       | Train MSE      | Test MSE       | Generalization Gap |
+|------------:|---------------:|---------------:|-------------------:|
+| OLS         | 1.1237 × 10⁷ | 1.6000 × 10⁷ | 4.7629 × 10⁶    |
+| Lasso       | 1.1241 × 10⁷ | 1.6006 × 10⁷ | 4.7645 × 10⁶    |
+| Elastic Net | 1.1252 × 10⁷ | 1.5996 × 10⁷ | 4.7447 × 10⁶    |
+| PCA + LR    | 1.1482 × 10⁷ | 1.6165 × 10⁷ | 4.6835 × 10⁶    |
+
+The results show that Elastic Net achieves the lowest test error (approximately 1.60 × 10⁷) despite a similar training error to OLS and Lasso, indicating its combined ℓ₁/ℓ₂ penalty provides a modest improvement in generalization. All models exhibit substantial overfitting, with generalization gaps on the order of 4.7 × 10⁶; PCA + LR reduces the gap slightly more than the others but at the cost of the highest test error, suggesting that discarding components also discards predictive signal. Lasso’s performance nearly mirrors that of OLS, implying that an ℓ₁ penalty alone was too aggressive. Overall, Elastic Net on the full feature set offers the best trade‑off between bias and variance for predicting median gameplay time.
 
 ```{python}
+#| echo: false
 pipeline_pca_lr = Pipeline([
     ('pre', preprocessor),
     ('pca', PCA(n_components=10, random_state=42)),
@@ -317,11 +453,15 @@ gap_pca = mse_test_pca - mse_train_pca
 results = [
     {'model': 'OLS', 'train_mse': 11237404.75, 'test_mse': 16000332.99},
     {'model': 'Lasso', 'train_mse': 11241401.01, 'test_mse': 16005884.32},
+    {'model': 'Elastic Net', 'train_mse': enet_mse_train, 'test_mse' : enet_mse_test},
     {'model': 'PCA + LR', 'train_mse': mse_train_pca, 'test_mse': mse_test_pca}
 ]
 ```
 
+
+### Random Forests
 ```{python, random forests}
+#| echo: false
 # fit random forest
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
@@ -340,6 +480,7 @@ print(f"Random Forest Test MSE: {rf_mse:.4f}")
 ```
 
 ```{python, decision-tree plot}
+#| echo: false
 from sklearn.tree import plot_tree
 
 single_tree = pipeline_rf.named_steps['rf'].estimators_[0]
@@ -356,6 +497,7 @@ plt.show()
 ```
 
 ```{python, top 10 predictors}
+#| echo: false
 # bar plot for top 10 predictors
 feature_names = pipeline_rf.named_steps['preprocess'].get_feature_names_out()
 importances = pipeline_rf.named_steps['rf'].feature_importances_
@@ -372,19 +514,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Results
 
-We evaluated two linear pipelines—ordinary least squares (OLS) and Lasso regression (with default regularization strength)—on their ability to predict `median_playtime_forever`. Table 1 reports the in‑sample (train) and out‑of‑sample (test) mean squared errors (MSE), as well as the absolute generalization gap between them.
-
-| Model | α | l1_ratio | Train MSE (×10⁶) | Test MSE (×10⁶) | Test − Train Gap (×10⁶) |
-|-----------:|:----------:|:----------:|-----------:|-----------:|-----------:|
-| OLS | N/A | N/A | 11.237405 | 16.000333 | 4.7629283 |
-| Lasso | default | N/A | 11.241401 | 16.005884 | 4.7644833 |
-| Elastic Net | 9.541×10⁻³ | 0.50 | 11.251817 | 15.996483 | 4.744666 |
-
-Both models exhibit substantial overfitting, with test errors approximately double their training errors. Introducing Lasso regularization raised the training MSE by about 0.31 million compared to OLS, reflecting an increase in bias, but only increased the test MSE by approximately 0.05 million. Consequently, Lasso’s generalization gap (8.77 M) is slightly narrower than that of OLS (9.03 M), though this did not translate into a meaningful reduction in out‑of‑sample error.
-
-Under the default hyperparameter settings, Lasso’s penalty has a negligible effect on predictive accuracy: both pipelines deliver similar test‑set performance of roughly 19 million MSE. This suggests that further tuning of the regularization strength or exploration of alternative modeling approaches may be necessary to achieve improved generalization.
 
 ## Discussion
 
