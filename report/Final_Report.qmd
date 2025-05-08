@@ -16,6 +16,7 @@ This study uses the Steam Games Dataset, which is collected in 2023 via Steam AP
 
 ### Relevant Variables
 
+We will include the following variables in our models:
 MEDIAN_PLAYTIME_FOREVER - This reports the target variable: median number of minutes players have spent on the game over their entire ownership. It captures sustained engagement.
 
 PRICE - This reports the listed price of the game in U.S. dollars. It may reflect content scope and target market. Price can influence both players' expectations and their actual time investment.
@@ -40,13 +41,8 @@ The first data transformation we had to do was to transform json format data to 
 
 ## Methodology
 
-```{r,message=FALSE}
-#Load R packages here
-library(reticulate)
-library(tidyverse)
-```
-
 ```{python import packages}
+#| echo: false
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -65,11 +61,13 @@ from sklearn.decomposition import PCA
 ```
 
 ```{python}
+#| echo: false
 df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
 
 ```{python}
+#| echo: false
 df = df.dropna() #dropping NA positive rate
 
 y = df['median_playtime_forever']
@@ -89,8 +87,74 @@ preprocessor = make_column_transformer(
 
 transformed_X = preprocessor.fit_transform(X)
 ```
+### Highlights from EDA
+
 
 ```{python}
+#| echo: false
+#| message: false
+#| warning: false
+corr_matrix = df[numerical_columns + ['median_playtime_forever']].corr()
+plt.figure(figsize=(10, 6))
+sns.heatmap(corr_matrix, annot=True, cmap="coolwarm")
+plt.title("Figure 1: Correlation Between Numerical Vairables and Playtime")
+plt.show()
+```
+The correlation matrix between numerical variables and playtime shows that price, peak concurrent users, and positive review rates all have a positive correlation with median playtime of games, but very weak.
+
+```{python}
+#| echo: false
+yearly_trend = df.groupby('release_year')['median_playtime_forever'].mean()
+
+plt.figure(figsize=(10, 5))
+sns.lineplot(x=yearly_trend.index, y=yearly_trend.values)
+plt.title("Average Median Playtime by Release Year")
+plt.xlabel("Release Year")
+plt.ylabel("Average Median Playtime")
+plt.show()
+```
+
+```{python}
+#| echo: false
+#| message: false
+#| warning: false
+import matplotlib.patches as mpatches
+
+cat_cols = ['publishers', 'genres', 'estimated_owners']
+
+for col in cat_cols:
+    plt.figure(figsize=(10, 6))
+    
+    top_vals = df[col].value_counts().nlargest(10).index
+    data = df[df[col].isin(top_vals)]
+    
+    palette = sns.color_palette("tab10", n_colors=10)
+    color_dict = dict(zip(top_vals, palette))
+    
+    sns.boxplot(data=data, x=col, y='median_playtime_forever',
+                palette=color_dict)
+    
+    plt.xticks(rotation=45)
+    plt.ylim(0, 10000)
+    plt.title(f"Median Playtime by Top {col} Categories")
+    plt.xlabel(col)
+    plt.ylabel("Median Playtime (minutes)")
+    
+    handles = [mpatches.Patch(color=color_dict[cat], label=cat) for cat in top_vals]
+    plt.legend(handles=handles, title=col, bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    plt.tight_layout()
+    plt.show()
+```
+
+
+
+
+
+```{python}
+#| echo: false
+#| message: false
+#| warning: false
 alphas_list = 10 ** np.linspace(-2, 3, 20)
 
 pipeline_lasso = Pipeline([
@@ -106,22 +170,26 @@ pipeline_ols = Pipeline([
 ```
 
 ```{python}
+#| echo: false
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=20250416)
 ```
 
 ```{python}
+#| echo: false
 pipeline_lasso.fit(X_train, y_train)
 pipeline_ols.fit(X_train, y_train)
 ```
 
 ```{python}
+#| echo: false
 coefs = pipeline_ols['estimator'].coef_
 
 feature_names = pipeline_ols['preprocess'].get_feature_names_out()
 ```
 
 ```{python}
+#| echo: false
 ols_coef_table = pd.DataFrame({
     'feature': feature_names,
     'coefficient': coefs
@@ -129,16 +197,19 @@ ols_coef_table = pd.DataFrame({
 ```
 
 ```{python}
+#| echo: false
 ols_coef_table.sort_values('coefficient', ascending=False)
 ```
 
 ```{python}
+#| echo: false
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
 ```
 
 ```{python}
+#| echo: false
 # train MSE OLS
 mean_squared_error(y_train, y_pred_train_ols)
 # test MSE OLS
@@ -146,6 +217,7 @@ mean_squared_error(y_test, y_pred_test_ols)
 ```
 
 ```{python}
+#| echo: false
 # Lasso model predictions
 y_pred_train_lasso = pipeline_lasso.predict(X_train)
 y_pred_test_lasso = pipeline_lasso.predict(X_test)
@@ -157,6 +229,7 @@ mean_squared_error(y_test, y_pred_test_lasso)
 ```
 
 ```{python}
+#| echo: false
 pipeline_enet = Pipeline([
     ('preprocess', preprocessor),
     ('enet_cv', ElasticNetCV(
@@ -192,7 +265,7 @@ print(f"Test–Train gap: {gap:,.0f}")
 ```
 
 ```{python}
-
+#| echo: false
 df_pca = PCA().fit(transformed_X)
 
 df_pca.explained_variance_.shape
@@ -201,6 +274,7 @@ np.round(df_pca.explained_variance_ratio_, decimals = 5)
 ```
 
 ```{python}
+#| echo: false
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
@@ -221,6 +295,7 @@ plt.show()
 ```
 
 ```{python}
+#| echo: false
 pca = PCA(n_components=3, random_state=42)
 pca_scores = pca.fit_transform(transformed_X)
 
@@ -228,6 +303,7 @@ df[['PC1','PC2','PC3']] = pca_scores
 ```
 
 ```{python, random forests}
+#| echo: false
 # fit random forest
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
@@ -246,6 +322,7 @@ print(f"Random Forest Test MSE: {rf_mse:.4f}")
 ```
 
 ```{python, decision-tree plot}
+#| echo: false
 from sklearn.tree import plot_tree
 
 single_tree = pipeline_rf.named_steps['rf'].estimators_[0]
@@ -262,6 +339,7 @@ plt.show()
 ```
 
 ```{python, top 10 predictors}
+#| echo: false
 # bar plot for top 10 predictors
 feature_names = pipeline_rf.named_steps['preprocess'].get_feature_names_out()
 importances = pipeline_rf.named_steps['rf'].feature_importances_
