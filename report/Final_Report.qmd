@@ -16,8 +16,7 @@ This study uses the Steam Games Dataset, which is collected in 2023 via Steam AP
 
 ### Relevant Variables
 
-We will include the following variables in our models:
-MEDIAN_PLAYTIME_FOREVER - This reports the target variable: median number of minutes players have spent on the game over their entire ownership. It captures sustained engagement.
+We will include the following variables in our models: MEDIAN_PLAYTIME_FOREVER - This reports the target variable: median number of minutes players have spent on the game over their entire ownership. It captures sustained engagement.
 
 PRICE - This reports the listed price of the game in U.S. dollars. It may reflect content scope and target market. Price can influence both players' expectations and their actual time investment.
 
@@ -36,6 +35,7 @@ COMPATIBLE_SYSTEMS - This reports the number of operating systems the game suppo
 POSITIVE_RATE - This reports the proportion of user reviews that are positive, ranging from 0% to 100%. A higher positive review rate often reflects better quality or player satisfaction, which can drive longer playtimes.
 
 ## Methodology
+
 ```{r import packages r}
 #| echo: false
 library(reticulate)
@@ -59,6 +59,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.decomposition import PCA
 ```
+
 ### Data Wrangling
 
 ```{python import data}
@@ -113,6 +114,7 @@ sns.heatmap(corr_matrix, annot=True, cmap="coolwarm")
 plt.title("Figure 1: Correlation Between Numerical Vairables and Playtime")
 plt.show()
 ```
+
 In figure 1, the correlation matrix between numerical variables and playtime shows that price, peak concurrent users, and positive review rates all have a positive correlation with median playtime of games, 0.057, 0.014, and 0.02 respectively, but very weak.
 
 ```{python}
@@ -128,6 +130,7 @@ plt.xlabel("Release Year")
 plt.ylabel("Average Median Playtime")
 plt.show()
 ```
+
 Figure 2 shows that average median playtime increases over time until around 2019, then drops sharply post-2020, indicating that that release year itself affects playtime, possibly due to changes in game design trends, COVID-19 increasing playtime for games released around 2019–2020, and market saturation or shorter gameplay loops in newer titles.
 
 ```{python}
@@ -163,18 +166,23 @@ for i, col in enumerate(cat_cols):
     plt.tight_layout()
     plt.show()
 ```
+
 In figure 3, genres clearly differ in how long players tend to engage with the game that Simulation and RPG games have higher medians and wider IQRs, suggesting longer, more immersive gameplay. Casual and Free to Play games show lower medians, fitting expectations for shorter, more repetitive sessions. In figure 4, the boxplot of median gameplay by top Estimated_owners category shows that games with more owners tend to have higher playtime, especially in the upper bins from 5M to 20M.
 
 ### Data Preprocessing
+
 We began by separating our data into a feature matrix, X, and our target variable, y, which represents median gameplay time. To prepare the features for modeling, we built a transformation pipeline that first converts all categorical variables—genres, publishers, estimated owners, release year, and compatible systems—into one‑hot encoded indicators while dropping the first category for each variable to prevent collinearity. Next, the pipeline standardizes every numerical predictor so that each has a mean of zero and a standard deviation of one. Any features not requiring encoding or scaling are passed through unchanged. We fit this entire transformation pipeline using only the training data and then applied it without modification to the test data, thereby ensuring that no information from the evaluation set influenced the preprocessing stage.
 
 ### Dimensionality Reduction (PCA)
+
 We performed Principal Component Analysis on the preprocessed feature matrix to explore multicollinearity and understand how many orthogonal directions capture most of the variance. A scree plot of the first 64 components revealed the individual variance explained by each, and a cumulative variance curve showed the number of components required to exceed 80 % of total variance. We inspected the loading vectors for the top ten principal components to interpret which original features contributed most strongly. Although this analysis guided our understanding of feature redundancy, we did not reduce the feature set for modeling and instead used the full transformed matrix in all predictive pipelines.
 
 Although PCA provided insight into variable redundancy, all subsequent predictive models were trained on the full preprocessed feature set rather than on a reduced subspace.
 
 ### Predictive Modeling
-We implemented four regression approaches within identical preprocessing pipelines. All models were trained on 70 % of the data (random_state fixed) and evaluated on the remaining 30 %. The first was ordinary least squares regression to serve as a baseline. The second used Lasso (ℓ₁) regularization with automatic penalty selection via cross‐validated ElasticNetCV at an l1_ratio of 1. The third employed Elastic Net, tuning both the mixing parameter (l1_ratio values of 0.1, 0.5, and 0.9) and the regularization strength (α on a logarithmic grid from 10⁻³ to 10³) through five‐fold cross‐validation. Finally, we trained a random forest regressor with 100 trees to provide a nonparametric benchmark capable of capturing nonlinear interactions. By combining the predictions of multiple decision trees trained on different subsets of the data and features, this model mitigates overfitting issue and improves accuracy. 
+
+We implemented four regression approaches within identical preprocessing pipelines. All models were trained on 70 % of the data (random_state fixed) and evaluated on the remaining 30 %. The first was ordinary least squares regression to serve as a baseline. The second used Lasso (ℓ₁) regularization with automatic penalty selection via cross‐validated ElasticNetCV at an l1_ratio of 1. The third employed Elastic Net, tuning both the mixing parameter (l1_ratio values of 0.1, 0.5, and 0.9) and the regularization strength (α on a logarithmic grid from 10⁻³ to 10³) through five‐fold cross‐validation. Finally, we trained a random forest regressor with 100 trees to provide a nonparametric benchmark capable of capturing nonlinear interactions. By combining the predictions of multiple decision trees trained on different subsets of the data and features, this model mitigates overfitting issue and improves accuracy.
+
 ```{python regression pipelines}
 #| echo: false
 #| message: false
@@ -245,7 +253,6 @@ ols_mse_train = mean_squared_error(y_train, y_pred_train_ols)
 ols_mse_test = mean_squared_error(y_test, y_pred_test_ols)
 ```
 
-
 ```{python Lasso fit}
 #| echo: false
 #| output: false
@@ -312,11 +319,12 @@ plot_tree(single_tree,
 plt.title("Decision Tree Plot in the Random Forest")
 plt.show()
 ```
+
 This figure illustrates the structure of a single decision tree from the random forest with a limit to the top three levels for clarity. It shows how the model splits based on features such as price, release year, and game genre to make predictions, which visualizes model's internal decision-making process and supports interpretability and feature analysis.
 
 ### Evaluation Metrics and Model Comparison
-Model performance was assessed by computing mean squared error on both training and test sets. We also calculated the generalization gap—the difference between test and train MSE—as an indicator of overfitting. For the linear models, we examined the estimated coefficients to identify which features had the greatest positive or negative influence on gameplay time. For the random forest, we visualized a representative decision tree to understand key feature splits. These results showed that Elastic Net offered the best trade‑off between bias and variance among the linear methods, while the random forest captured additional nonlinear structure at the cost of a larger generalization gap.
 
+Model performance was assessed by computing mean squared error on both training and test sets. We also calculated the generalization gap—the difference between test and train MSE—as an indicator of overfitting. For the linear models, we examined the estimated coefficients to identify which features had the greatest positive or negative influence on gameplay time. For the random forest, we visualized a representative decision tree to understand key feature splits. These results showed that Elastic Net offered the best trade‑off between bias and variance among the linear methods, while the random forest captured additional nonlinear structure at the cost of a larger generalization gap.
 
 ## Results
 
@@ -335,6 +343,7 @@ lasso_coef_table = pd.DataFrame({
 top10    = lasso_coef_table.nlargest(10, 'coefficient')
 bottom10 = lasso_coef_table.nsmallest(10, 'coefficient')
 ```
+
 ### Coefficients
 
 | Feature                              | Coefficient |
@@ -363,6 +372,7 @@ bottom10 = lasso_coef_table.nsmallest(10, 'coefficient')
 The coefficient table above ranks the top positive and negative drivers of median gameplay time under our Elastic Net model (with 10 principal components retained for interpretability). On the positive side, games classified in the “others” genre enjoy the largest boost—adding roughly 2,985 minutes—while simulation titles contribute nearly 900 additional minutes relative to the reference categories. Published by Fulqrum Publishing corresponds to an increase of about 773 minutes, and titles with 20 million–50 million estimated owners add roughly 670 minutes. SEGA‐published games and titles released in 2020 each add over 400 minutes, as do games with 50 000–100 000 or 5 million–10 million owners. RPGs also feature among the top positive predictors, contributing around 332 minutes.
 
 Conversely, several publishers and release years reduce expected gameplay time. Kagura Games titles subtract about 207 minutes, and Devolver Digital games subtract about 182 minutes. Older release years—2009 and 2010—reduce playtime by roughly 154 and 112 minutes, respectively, while more recent years (2012–2014 and 2023–2024) exert progressively smaller negative impacts (– 47 to – 127 minutes). Square Enix publications and the catch‑all “other” publisher category have modest negative coefficients (– 46 and – 26 minutes). Together, these coefficients illuminate which features most strongly influence player engagement as measured by median gameplay time.
+
 ```{python}
 #| echo: false
 df_pca = PCA().fit(transformed_X)
@@ -386,7 +396,6 @@ ax.set(
 plt.show()
 ```
 
-
 ```{python PCA Cumulative pve}
 #| echo: false
 plt.figure(figsize=(5,3))
@@ -399,13 +408,12 @@ plt.show()
 ```
 
 ### PCA
+
 The scree plot (Figure 5) shows that the first principal component accounts for approximately 22 % of the variance in the preprocessed feature space, the second about 15 %, and the third about 3.5 %. Thereafter each additional component explains progressively less (the tenth component contributes roughly 1 %). When we examine the cumulative proportion of variance explained (PVE), the first five components capture about 55 % of the variance, and by ten components we reach roughly 78 % (just shy of our 80 % target). Although reaching 80 % would require around 13 components, we elected to proceed with 10 principal components as a representation that still captures the bulk of the structure in the data.
-
-
-
 
 ```{python}
 #| echo: false
+#| warning: false
 feature_names = preprocessor.get_feature_names_out()
 pca = PCA(n_components=10, random_state=42)
 pca_scores = pca.fit_transform(transformed_X)
@@ -419,6 +427,7 @@ loadings = pd.DataFrame(
 
 ```{python}
 #| echo: false
+#| warning: false
 n = len(feature_names)
 
 # build tick positions: every 5th up until n‑5, then the last 5 positions
@@ -439,47 +448,39 @@ ax.set_yticks(tick_positions)
 ax.set_yticklabels(feature_names[tick_positions], fontsize=5, rotation=15, ha='right')
 
 # colorbar and layout
-fig.colorbar(im, ax=ax, label="Loading")
+fig.colorbar(im, ax=ax, label="Loading");
 plt.title("Figure 7: PCA Heat Loadings")
 plt.show()
 ```
-PC 1 (Compatibility vs. Platform Restriction)
-The strongest positive loading is on compatible_systems_3 (games available on three platforms), with a secondary positive contribution from peak_pgc (higher peak concurrent users). Games that run on more platforms and draw larger simultaneous audiences score highly on PC 1. Features like compatible_systems_2 and lower ownership bins load only weakly. PC 1 therefore differentiates broadly available, high‑traffic titles from more narrowly supported ones.
 
-PC 2 (Two‑System vs. Three‑System Contrast)
-PC 2 shows a large negative loading on compatible_systems_2 and a positive loading on compatible_systems_3. It effectively contrasts games that appear on exactly two platforms (low PC 2 scores) with those on three (high PC 2 scores). All other features load near zero, confirming that platform breadth is the sole driver of this component.
+PC 1 (Compatibility vs. Platform Restriction) The strongest positive loading is on compatible_systems_3 (games available on three platforms), with a secondary positive contribution from peak_pgc (higher peak concurrent users). Games that run on more platforms and draw larger simultaneous audiences score highly on PC 1. Features like compatible_systems_2 and lower ownership bins load only weakly. PC 1 therefore differentiates broadly available, high‑traffic titles from more narrowly supported ones.
 
-PC 3 (Engagement Intensity vs. Review Positivity)
-The most negative loading is on peak_pgc, while positive_rate loads positively. High‑intensity titles (big peaks) receive low PC 3 scores, whereas games with high positive‑review rates score high. PC 3 thus separates “blockbuster” crowd‑pullers from smaller titles that nonetheless enjoy enthusiastic critical reception.
+PC 2 (Two‑System vs. Three‑System Contrast) PC 2 shows a large negative loading on compatible_systems_2 and a positive loading on compatible_systems_3. It effectively contrasts games that appear on exactly two platforms (low PC 2 scores) with those on three (high PC 2 scores). All other features load near zero, confirming that platform breadth is the sole driver of this component.
 
-PC 4 (Low‑Ownership Tier Contrast)
-A moderate positive loading appears on the 100 000–200 000 owners bin, with smaller contributions from adjacent bins. PC 4 distinguishes moderately owned games from both low‑ownership (< 50 000) and very high‑ownership (> 1 million) titles. This axis highlights variation in the “mid‑tail” of game popularity.
+PC 3 (Engagement Intensity vs. Review Positivity) The most negative loading is on peak_pgc, while positive_rate loads positively. High‑intensity titles (big peaks) receive low PC 3 scores, whereas games with high positive‑review rates score high. PC 3 thus separates “blockbuster” crowd‑pullers from smaller titles that nonetheless enjoy enthusiastic critical reception.
 
-PC 5 (Mid‑Tail Ownership vs. Early Release Years)
-PC 5 again loads positively on the 100 000–200 000 ownership bin, but also shows negative weight on very early release years (for example, release_year_2001 and release_year_2006). Titles in that mid‑ownership tier—but released more recently—score highly on PC 5, separating them from early‑era games with similar owner counts.
+PC 4 (Low‑Ownership Tier Contrast) A moderate positive loading appears on the 100 000–200 000 owners bin, with smaller contributions from adjacent bins. PC 4 distinguishes moderately owned games from both low‑ownership (\< 50 000) and very high‑ownership (\> 1 million) titles. This axis highlights variation in the “mid‑tail” of game popularity.
 
-PC 6 (Adventure‑Genre Emphasis)
-The dominant positive loading is on genres_Adventure, with smaller positive weights on a handful of publishers (for example, SEGA). PC 6 thus marks out adventure‑style titles in our dataset.
+PC 5 (Mid‑Tail Ownership vs. Early Release Years) PC 5 again loads positively on the 100 000–200 000 ownership bin, but also shows negative weight on very early release years (for example, release_year_2001 and release_year_2006). Titles in that mid‑ownership tier—but released more recently—score highly on PC 5, separating them from early‑era games with similar owner counts.
 
-PC 7 and PC 8 (Sub‑Genre and Publisher Nuances)
-PC 7 loads modestly on certain ownership bins and a couple of niche genres (for example, Racing). PC 8 shows a positive loading on owners_200 000–500 000 and a negative loading on peak_pgc, capturing another slice of mid‑range popularity versus raw engagement.
+PC 6 (Adventure‑Genre Emphasis) The dominant positive loading is on genres_Adventure, with smaller positive weights on a handful of publishers (for example, SEGA). PC 6 thus marks out adventure‑style titles in our dataset.
 
-PC 9 (Release‑Year “2016 Spike”)
-A strong positive loading on release_year_2016 indicates that games released in 2016 have unique covariation in our feature set—perhaps clustering around particular publishers or ownership profiles that year.
+PC 7 and PC 8 (Sub‑Genre and Publisher Nuances) PC 7 loads modestly on certain ownership bins and a couple of niche genres (for example, Racing). PC 8 shows a positive loading on owners_200 000–500 000 and a negative loading on peak_pgc, capturing another slice of mid‑range popularity versus raw engagement.
 
-PC 10 (Release‑Year “2021 Effect”)
-The largest loading is on release_year_2021, separating the newest cohort of games (with their own typical owner counts and review rates) from older titles.
+PC 9 (Release‑Year “2016 Spike”) A strong positive loading on release_year_2016 indicates that games released in 2016 have unique covariation in our feature set—perhaps clustering around particular publishers or ownership profiles that year.
+
+PC 10 (Release‑Year “2021 Effect”) The largest loading is on release_year_2021, separating the newest cohort of games (with their own typical owner counts and review rates) from older titles.
 
 Taken together, the first ten PCs reveal that platform compatibility, ownership tiers, engagement versus review balance, genre, and release‑year cohorts are the principal drivers of variation in our transformed feature space. By retaining these ten components (approximately 78 % of total variance), we capture the major structural patterns—platform scope, popularity strata, and temporal/genre effects—while discarding lower‑level noise.
 
 ### Regression Models
 
-| Model       | Train MSE      | Test MSE       | Generalization Gap |
-|------------:|---------------:|---------------:|-------------------:|
-| OLS         | 1.1237 × 10⁷ | 1.6000 × 10⁷ | 4.7629 × 10⁶    |
-| Lasso       | 1.1241 × 10⁷ | 1.6006 × 10⁷ | 4.7645 × 10⁶    |
-| Elastic Net | 1.1252 × 10⁷ | 1.5996 × 10⁷ | 4.7447 × 10⁶    |
-| PCA + LR    | 1.1482 × 10⁷ | 1.6165 × 10⁷ | 4.6835 × 10⁶    |
+|       Model |    Train MSE |     Test MSE | Generalization Gap |
+|------------:|-------------:|-------------:|-------------------:|
+|         OLS | 1.1237 × 10⁷ | 1.6000 × 10⁷ |       4.7629 × 10⁶ |
+|       Lasso | 1.1241 × 10⁷ | 1.6006 × 10⁷ |       4.7645 × 10⁶ |
+| Elastic Net | 1.1252 × 10⁷ | 1.5996 × 10⁷ |       4.7447 × 10⁶ |
+|    PCA + LR | 1.1482 × 10⁷ | 1.6165 × 10⁷ |       4.6835 × 10⁶ |
 
 The results show that Elastic Net achieves the lowest test error (approximately 1.60 × 10⁷) despite a similar training error to OLS and Lasso, indicating its combined ℓ₁/ℓ₂ penalty provides a modest improvement in generalization. All models exhibit substantial overfitting, with generalization gaps on the order of 4.7 × 10⁶; PCA + LR reduces the gap slightly more than the others but at the cost of the highest test error, suggesting that discarding components also discards predictive signal. Lasso’s performance nearly mirrors that of OLS, implying that an ℓ₁ penalty alone was too aggressive. Overall, Elastic Net on the full feature set offers the best trade‑off between bias and variance for predicting median gameplay time.
 
@@ -513,8 +514,8 @@ results = [
 ]
 ```
 
-
 ### Random Forests
+
 The Random Forest model achieved a test set Mean Squared Error (MSE) of 20,697,742.12, indicating moderate predictive performance. While the error value is relatively high in absolute terms, it remains informative given the scale and variance of the target variable median_playtime_forever in minutes.
 
 ```{python, top 10 predictors}
@@ -534,9 +535,8 @@ plt.ylabel("Variables")
 plt.tight_layout()
 plt.show()
 ```
-In figure 8, the feature importance analysis reveals that peak_ccu (peak concurrent users) and positive_rate (user review rates) are the most influential predictors with a approxiamtely 0.2 importance level, suggesting that user activity and reception are primary drivers of the target outcome. Other important variables include price, release_year, estimated_owners(20000 - 50000, and 50000 - 100000), and game genres(Adventure). 
 
-
+In figure 8, the feature importance analysis reveals that peak_ccu (peak concurrent users) and positive_rate (user review rates) are the most influential predictors with a approxiamtely 0.2 importance level, suggesting that user activity and reception are primary drivers of the target outcome. Other important variables include price, release_year, estimated_owners(20000 - 50000, and 50000 - 100000), and game genres(Adventure).
 
 ## Discussion
 
@@ -557,10 +557,11 @@ For future improvement, the first thing we can improve on is feature engineering
 Regarding ethical considerations, we now recognize that even our decision to treat “positive reviews” as a key variable could be problematic. Games with LGBTQ+ themes, female protagonists, or minority developers are often subject to review bombing by toxic communities. A well-known example is the indie game Celeste, whose developer is a transgender woman. Despite receiving critical acclaim and winning awards for gameplay and storytelling, the game was targeted with waves of negative reviews due to the developer’s identity. If our model interprets low review scores as an indicator of poor game quality without context, we risk reproducing and legitimizing cultural bias through algorithmic analysis.
 
 ## Conclusions
+
 This study used data from the Steam platform to investigate the key factors influencing a game’s median gameplay time, serving as a proxy for sustained user engagement. Through a series of regression models, we identified peak concurrent users (peak_ccu), positive review rate (positive_rate), and price as the most predictive variables. These findings shows that player engagement intensity and perceived quality are critical drivers of long-term playtime, while price may act as a signal for content depth or player expectations. For game developers and marketing teams, the results offer data-driven strategies for optimizing pricing, content design, and launch timing. Additionally, the modeling framework we established is extensible and may be applied to other platforms or digital behavior prediction tasks, contributing broadly to user-centered design and analytics in interactive media.
 
-
 ## What we would do differently
+
 If we were to start this project over, we would continue working with the Steam dataset but apply a log transformation to our outcome variable, median_playtime_forever, due to its highly skewed distribution and wide range. Additionally, we would consider filtering out all free-to-play games and focus exclusively on paid titles to better understand the factors that drive sustained engagement in games with a financial barrier to entry. This would help control for monetization differences and reduce variability caused by vastly different business models. We would also spend more time refining our feature engineering process—especially in handling categorical variables like publishers and genres—to capture more meaningful patterns while reducing noise.
 
 ## References
