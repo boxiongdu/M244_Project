@@ -1,6 +1,8 @@
-**Data**
+## Data
 
 We used Steam Games Dataset for our project, which is collected in 2023 via Steam API and Steam Spy, then uploaded to Kaggle. The original dataset in games.csv.zip contains 96509 observations and 39 variables. After data wrangling and transformation, there are 9 variables and 15010 observations left in games_cleaned.csv.
+
+## Codebook
 
 | Variable Name   | Type      | Description                              | Example                          |
 |-----------------|-----------|------------------------------------------|----------------------------------|
