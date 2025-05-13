@@ -388,6 +388,7 @@ plt.show()
 
 
 ```{python PCA Cumulative pve}
+#| echo: false
 plt.figure(figsize=(5,3))
 plt.plot(np.arange(1, len(df_pca.explained_variance_ratio_)+1), np.cumsum(df_pca.explained_variance_ratio_), marker='o')
 plt.xlabel('PC #'); plt.ylabel('Cumulative PVE')
@@ -417,6 +418,7 @@ loadings = pd.DataFrame(
 ```
 
 ```{python}
+#| echo: false
 n = len(feature_names)
 
 # build tick positions: every 5th up until n‑5, then the last 5 positions
@@ -483,6 +485,7 @@ The results show that Elastic Net achieves the lowest test error (approximatel
 
 ```{python}
 #| echo: false
+#| output: false
 pipeline_pca_lr = Pipeline([
     ('pre', preprocessor),
     ('pca', PCA(n_components=10, random_state=42)),
@@ -514,8 +517,6 @@ results = [
 ### Random Forests
 The Random Forest model achieved a test set Mean Squared Error (MSE) of 20,697,742.12, indicating moderate predictive performance. While the error value is relatively high in absolute terms, it remains informative given the scale and variance of the target variable median_playtime_forever in minutes.
 
-In figure 5, the feature importance analysis reveals that peak_ccu (peak concurrent users) and positive_rate (user review rates) are the most influential predictors with a approxiamtely 0.2 importance level, suggesting that user activity and reception are primary drivers of the target outcome. Other important variables include price, release_year, estimated_owners(20000 - 50000, and 50000 - 100000), and game genres(Adventure). 
-
 ```{python, top 10 predictors}
 #| echo: false
 # bar plot for top 10 predictors
@@ -533,6 +534,7 @@ plt.ylabel("Variables")
 plt.tight_layout()
 plt.show()
 ```
+In figure 8, the feature importance analysis reveals that peak_ccu (peak concurrent users) and positive_rate (user review rates) are the most influential predictors with a approxiamtely 0.2 importance level, suggesting that user activity and reception are primary drivers of the target outcome. Other important variables include price, release_year, estimated_owners(20000 - 50000, and 50000 - 100000), and game genres(Adventure). 
 
 
 
