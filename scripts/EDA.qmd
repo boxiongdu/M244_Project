@@ -1,0 +1,234 @@
+---
+title: "MATH244 project EDA"
+author: "Boxiong Du, Yifei Qu"
+date: "03/25/2025"
+format: html
+editor: visual
+---
+
+```{python loading file and changing format}
+#| label: data-loading
+#| warning: false
+#| message: false
+
+import os
+import json
+import pandas as pd
+
+first_file = '/Users/feifei/Desktop/M244_Project/data/games.json'
+with open(first_file, 'r') as file:
+    json_data = json.load(file)
+
+#selecting unnecessary variables to drop
+unnecessary_vars = [
+    'packages', 'screenshots', 'movies', 'header_image', 'website', 
+    'support_url', 'notes', 'support_email', 'required_age', 'metacritic_url',
+    'detailed_description', 'about_the_game', 'achievements', 
+    'full_audio_languages', 'dlc_count', 'supported_languages', 'developers'
+]
+
+#transforming json data to csv data
+games = []
+for app_id, game_info in json_data.items():
+    filtered_info = {k: v for k, v in game_info.items() if k not in unnecessary_vars}
+    
+    tags = game_info.get('tags', {})
+    filtered_info['tags'] = list(tags.keys()) if isinstance(tags, dict) else []
+    filtered_info['tag_frequencies'] = list(tags.values()) if isinstance(tags, dict) else []
+    filtered_info['app_id'] = app_id
+    
+    games.append(filtered_info)
+
+df = pd.DataFrame(games)
+
+df.to_csv('games.csv', index=False) #saving the transformed data
+```
+
+#### Exploring Data
+
+Our outcome variable is Median Playtime Forever, which indicates the median time in minutes all players spend in the game.This variable effectively captures long-term player engagement by focusing on typical gameplay duration. However, it has some limitations that it excludes short-term gameplay and players who quit the game quickly. It's not surprising that the price and median playtime show a positive relationship and peak CCU and median playtime also show a positive relationship. We consider price, Peak CCU, and Positive Review Rate to be our key explanatory variables.
+
+```{python}
+import pandas as pd
+df = pd.read_csv('games.csv')
+```
+
+```{python data wrangling}
+#| label: data-wrangling
+#| warning: false
+
+df = df[df['median_playtime_forever'] > 0]
+
+#further select necessary columns
+keep_cols = [
+    'name', 'release_date', 'price', 'windows', 'mac', 'linux',
+    'publishers', 'genres', 'positive', 'negative', 'estimated_owners',
+    'median_playtime_forever', 'peak_ccu'
+]
+df = df[keep_cols]
+
+#keep only the 'year' of release data
+df['release_year'] = pd.to_datetime(df['release_date'], format='mixed').dt.year
+
+#Turn True/False to 1/0 and then take the sum
+system_cols = ['windows', 'mac', 'linux']
+for col in system_cols:
+    df[col] = df[col].astype(int)
+df['compatible_systems'] = df[system_cols].sum(axis=1)
+
+#Get positive review rates
+df['positive_rate'] = df['positive'] / (df['positive'] + df['negative'])
+
+#Turn estimated owners to a categorical variable
+df['estimated_owners'] = pd.Categorical(df['estimated_owners'])
+
+#Count only the top 10 publishers
+top10 = df['publishers'].value_counts().nlargest(10).index
+df['publishers'] = df['publishers'].apply(lambda x: x if x in top10 else 'others')
+
+#Get only the main genre
+df['genres'] = df['genres'].apply(lambda x: x.split(","))
+df['genres'] = df['genres'].apply(lambda x: x[0])
+df['genres'] = df['genres'].str.strip("[]'")
+
+top10_genre = df['genres'].value_counts().nlargest(10).index
+df['genres'] = df['genres'].apply(lambda x: x if x in top10_genre else 'others')
+
+df = df.drop(columns=['release_date', 'windows', 'mac', 'linux', 'positive', 'negative'])
+
+df.to_csv('games_cleaned.csv', index=False)
+```
+
+#### Data Wrangling and Transformation
+
+The first data transformation we had to do was to transform json format data to csv data for further analysis. Then we dropped all rows where 'median playtime forever' \> 0.\
+Next, we selected a list of variables that we believed would be explanatory for the outcome. In the end we transformed a few variables and created some new variables:\
+1. Kept only 'year' in the 'release_date' variable, so that we can treat it as categorical.\
+2. Combined three system compatibility columns into one, and taking the sum of True values so that this also becomes a categorical variable.\
+3. Created 'positive review rate' column. Instead of positive reviews count, we believed that positive review rate would better represent player's opinion about it since game review numbers varies from game to game.\
+4. Transformed estimated owners to categorical.The original data records estimated owners as a range and not a number, so it is a categorical variable.\
+5. Took the first element from the 'genres' list as the main genre for the game. This was to reduce the number of different genres combinations so that we don't get thousands of dummy variables.\
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(stats)
+
+games <- read.csv("games.csv")
+```
+
+```{r}
+games_filtered <- games %>%
+  filter(
+    !is.na(price),
+    !is.na(positive_rate),
+    price <= quantile(price, 0.9999, na.rm = TRUE)
+  )
+
+ggplot(games_filtered, aes(x = price, y = positive_rate)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(
+    title = "Positive Review Rate vs. Price",
+    x = "Price",
+    y = "Positive Review Rate"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(games, aes(x = price, y = estimated_owners)) + 
+  
+```
+
+```{r}
+price_trend <- games %>%
+  group_by(release_year) %>%
+  summarise(
+    avg_price = mean(price, na.rm = TRUE),
+    n = n()
+  ) %>%
+  filter(n >= 50, release_year >= 2010)
+
+ggplot(price_trend, aes(x = release_year, y = avg_price)) +
+  geom_line(color = "green", linewidth = 1) +
+  geom_point(color = "darkgreen", size = 2) +
+  labs(
+    title = "Game Prices with Year",
+    x = "Release Year",
+    y = "Average Price"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(games_filtered, aes(x = positive_rate, fill = factor(compatible_systems))) +
+  geom_density(alpha = 0.4) +
+  labs(
+    title = "Multi-Platform Support Correlates with Better Reviews",
+    x = "Positive Review Rate",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
+```{r, warning=FALSE}
+games_filtered <- games %>%
+  filter(price <= quantile(price, 0.95, na.rm = TRUE),
+         median_playtime_forever <= quantile(median_playtime_forever, 0.95, na.rm = TRUE))
+
+ggplot(games_filtered, aes(x = price, y = median_playtime_forever)) +
+  geom_point(alpha = 0.4, color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ log(x + 1), color = "red") +
+  scale_x_log10(labels = scales::dollar) +  
+  labs(
+    title = "Median Playtime vs. Price",
+    x = "Price",
+    y = "Median Playtime"
+  ) +
+  theme_minimal()
+```
+
+```{r, warning=FALSE, message=FALSE}
+games_filtered <- games %>%
+  filter(
+    peak_ccu > 0,  
+    median_playtime_forever > 0,
+    peak_ccu <= quantile(peak_ccu, 0.95, na.rm = TRUE),
+    median_playtime_forever <= quantile(median_playtime_forever, 0.95, na.rm = TRUE)
+  )
+
+
+ggplot(games_filtered, aes(x = peak_ccu, y = median_playtime_forever)) +
+  geom_point(alpha = 0.3, color = "blue") +
+  geom_quantile(quantiles = 0.5, color = "red", linewidth = 1) +  
+  scale_x_log10() +  
+  labs(
+    title = "Median Playtime vs. Peak CCU",
+    x = "Peak Concurrent Users",
+    y = "Median Playtime"
+  ) +
+  theme_minimal()
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(plotly)
+
+plot_ly(games_filtered, 
+        x = ~peak_ccu, 
+        y = ~price, 
+        z = ~median_playtime_forever,
+        color = ~positive_rate,
+        colors = viridisLite::viridis(10),
+        type = "scatter3d",
+        mode = "markers",
+        marker = list(size = 3, opacity = 0.6)) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Peak CCU", type = "log"),
+      yaxis = list(title = "Price"),
+      zaxis = list(title = "Playtime")
+    ),
+    title = "3D Interaction: Price, Peak CCU, and Playtime"
+  )
+```
