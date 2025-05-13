@@ -43,9 +43,6 @@ All datasets used in this project are stored under the `data/` directory:
 - **raw/**: Contains the original, unmodified data files as obtained.
 - **cleaned/**: Includes data that have been processed, filtered, and transformed for analysis. Each cleaning step is documented in the corresponding script in `scripts/`.
 
-## Figures
-The `figures/` folder houses all visualizations produced during EDA, including scree plots, correlation matrices, and model diagnostics. These figures are referenced in our final report.
-
 ## Scripts
 All preprocessing, analysis, and modeling code lives in the `scripts/` directory.
 
