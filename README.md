@@ -11,6 +11,7 @@ This repository contains our group final project for Vassar College's **MATH-244
 - [Report](#report)
 - [Peer Review](#peer-review)
 - [Presentation](#presentation)
+- [Getting Started](#getting-started)
 - [Dependencies](#dependencies)
   
 ## Project Structure
@@ -62,9 +63,27 @@ Artifacts of our peer feedback for Eli and Caroline
 ## Presentation
 Our slide deck summarizing the project findings can be found in the `presentation/` directory.
 
+## Getting Started
+To reproduce our results locally:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/M244_Project.git
+   cd M244_Project
+   ```
+2. **Run the scripts**
+   ```bash
+   scripts/EDA.qmd
+   ```
+   Please make sure you change your file saving path accordingly.
+   
+3. **Build the report**
+   ```bash
+   quarto render report/Final_Report.qmd
+   ```
+   
 ## Dependencies
 - Python 3.8+ (pandas, numpy, scikit-learn, matplotlib, seaborn)
 - R 4.0+ (if applicable for certain scripts)
 - Quarto (for rendering the final report)
 - Git
-
