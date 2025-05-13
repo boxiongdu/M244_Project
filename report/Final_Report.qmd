@@ -63,7 +63,7 @@ from sklearn.decomposition import PCA
 
 ```{python import data}
 #| echo: false
-df = pd.read_csv('/Users/brodydu/Desktop/project/M244_Project/data/games_cleaned.csv') 
+df = pd.read_csv('/Users/feifei/Desktop/M244_Project/data/games_cleaned.csv') 
 #modify to your own file path
 ```
 
@@ -179,6 +179,9 @@ We implemented four regression approaches within identical preprocessing pipelin
 #| echo: false
 #| message: false
 #| warning: false
+#| output: false
+#| capture: true
+#| results: hide
 
 alphas_list = 10 ** np.linspace(-2, 3, 20)
 
@@ -208,12 +211,21 @@ pipeline_enet = Pipeline([
 
 ```{python splitting data}
 #| echo: false
+#| output: false
+#| capture: true
+#| results: hide
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=20250416)
 ```
 
 ```{python fitting models}
 #| echo: false
+#| output: false
+#| capture: true
+#| results: hide
+
+from sklearn import set_config
+set_config(display="text")
 pipeline_lasso.fit(X_train, y_train)
 pipeline_ols.fit(X_train, y_train)
 pipeline_enet.fit(X_train, y_train)
@@ -221,6 +233,9 @@ pipeline_enet.fit(X_train, y_train)
 
 ```{python OLS fit}
 #| echo: false
+#| output: false
+#| capture: true
+#| results: hide
 # OLS model predictions
 y_pred_train_ols = pipeline_ols.predict(X_train)
 y_pred_test_ols = pipeline_ols.predict(X_test)
@@ -233,6 +248,9 @@ ols_mse_test = mean_squared_error(y_test, y_pred_test_ols)
 
 ```{python Lasso fit}
 #| echo: false
+#| output: false
+#| capture: true
+#| results: hide
 # Lasso model predictions
 y_pred_train_lasso = pipeline_lasso.predict(X_train)
 y_pred_test_lasso = pipeline_lasso.predict(X_test)
@@ -260,6 +278,7 @@ gap       = enet_mse_test - enet_mse_train
 
 ```{python, random forests}
 #| echo: false
+#| output: false
 # fit random forest
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
@@ -283,17 +302,17 @@ from sklearn.tree import plot_tree
 
 single_tree = pipeline_rf.named_steps['rf'].estimators_[0]
 
-plt.figure(figsize=(30, 15), dpi = 200)
+plt.figure(figsize=(20, 10), dpi = 200)
 plot_tree(single_tree,
           feature_names=pipeline_rf.named_steps['preprocess'].get_feature_names_out(),
           filled=True,
           rounded=True,
           max_depth=2,  
           fontsize=12)
-plt.title("Fifure 4: Decision Tree Plot in the Random Forest")
+plt.title("Decision Tree Plot in the Random Forest")
 plt.show()
 ```
-Figure 4 illustrates the structure of a single decision tree from the random forest with a limit to the top three levels for clarity. It shows how the model splits based on features such as price, release year, and game genre to make predictions, which visualizes model's internal decision-making process and supports interpretability and feature analysis.
+This figure illustrates the structure of a single decision tree from the random forest with a limit to the top three levels for clarity. It shows how the model splits based on features such as price, release year, and game genre to make predictions, which visualizes model's internal decision-making process and supports interpretability and feature analysis.
 
 ### Evaluation Metrics and Model Comparison
 Model performance was assessed by computing mean squared error on both training and test sets. We also calculated the generalization gap—the difference between test and train MSE—as an indicator of overfitting. For the linear models, we examined the estimated coefficients to identify which features had the greatest positive or negative influence on gameplay time. For the random forest, we visualized a representative decision tree to understand key feature splits. These results showed that Elastic Net offered the best trade‑off between bias and variance among the linear methods, while the random forest captured additional nonlinear structure at the cost of a larger generalization gap.
